@@ -196,6 +196,10 @@ pipeline/config/secrets.yaml
 
 # Large training datasets
 pipeline/training_datasets/
+pipeline/data/training_datasets/
+
+# Training metadata
+**/training_summary*.json
 
 # Inference results (can be regenerated)
 pipeline/inference_results*.json
@@ -206,6 +210,11 @@ pipeline/runs/
 # Internal documentation (not for reviewers)
 *_TESTING_SUMMARY.md
 PRE_SUBMISSION_REVIEW.md
+**/TESTING.md
+
+# Development utility scripts
+**/create_test_images.py
+**/test_insert_mock_data.py
 
 # ============================================================================
 # Keep These Files/Directories
