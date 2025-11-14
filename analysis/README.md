@@ -22,7 +22,7 @@ data-analysis/
 
 The raw data is located in `data/raw/publication_data/`:
 - `specimen_data.xlsx` - Specimen-level data (46,012 specimens)
-- `biomass_data.xlsx` - Biomass measurements (378 samples)
+- `biomass_data.xlsx` - Biomass measurements (378 records from 54 samples × 7 size fractions)
 - `model_performance.xlsx` - Model performance metrics (73 taxa)
 
 ## Analysis

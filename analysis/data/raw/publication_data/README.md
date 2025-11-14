@@ -9,7 +9,7 @@ This directory contains the raw data underlying the manuscript figures and analy
 | File | Records | Size | Description |
 |------|---------|------|-------------|
 | `specimen_data.xlsx` | 46,012 specimens | 1.5 MB | Individual specimen classifications |
-| `biomass_data.xlsx` | 378 samples | 23 KB | Sample-level biomass and abundance |
+| `biomass_data.xlsx` | 378 measurements | 23 KB | Biomass and abundance (54 samples × 7 size fractions) |
 | `model_performance.xlsx` | 73 taxa | 15 KB | Per-taxon classification performance |
 
 **Total:** ~1.54 MB
@@ -54,9 +54,9 @@ print(specimens.groupby('family').size())
 
 ### biomass_data.xlsx
 
-**Description:** Sample-level biomass and abundance data from field sampling
+**Description:** Biomass and abundance data from field sampling, organized by sample and size fraction
 
-**Records:** 378 samples
+**Records:** 378 measurements (54 field samples × 7 size fractions)
 
 **Columns:**
 - `sample_id` - Unique sample identifier
@@ -129,7 +129,7 @@ print(f"Taxa achieving ≥95% accuracy: {len(valid_taxa)}/{len(performance)}")
 - Classification: YOLOv11 hierarchical classification following Catalogue of Life taxonomy
 - Threshold calibration: 95% accuracy criterion (see Methods and THRESHOLD_CALIBRATION.md)
 
-**Data Collection Period:** 2019-2021 (field sampling)
+**Data Collection Period:** 2023-2024 (field sampling)
 
 **Processing:** Automated pipeline (see main README.md)
 
@@ -193,7 +193,6 @@ For questions about the data:
 - **Documentation:**
   - `../../README.md` - Pipeline overview and usage
   - `../../THRESHOLD_CALIBRATION.md` - Threshold methodology
-  - `../../REVIEWER_GUIDE.md` - Reviewer instructions
 
 ---
 

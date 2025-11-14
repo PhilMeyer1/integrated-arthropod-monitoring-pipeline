@@ -5,7 +5,7 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Python 3.8+](https://img.shields.io/badge/python-3.8+-blue.svg)](https://www.python.org/downloads/)
 [![R 4.2+](https://img.shields.io/badge/R-4.2+-blue.svg)](https://www.r-project.org/)
-[![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.XXXXX.svg)](https://doi.org/10.5281/zenodo.XXXXX)
+[![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.17512687.svg)](https://doi.org/10.5281/zenodo.17512687)
 
 ---
 
@@ -122,7 +122,7 @@ Our integrated approach reveals:
   year={2025},
   publisher={GitHub},
   url={https://github.com/PhilMeyer1/integrated-arthropod-monitoring-pipeline},
-  doi={10.5281/zenodo.XXXXX}
+  doi={10.5281/zenodo.17512687}
 }
 ```
 
@@ -133,12 +133,11 @@ Our integrated approach reveals:
 ### Documentation
 - **Pipeline Documentation**: [`pipeline/README.md`](pipeline/README.md)
 - **Pipeline Architecture**: [`pipeline/docs/ARCHITECTURE.md`](pipeline/docs/ARCHITECTURE.md)
-- **Reviewer Guide**: [`pipeline/REVIEWER_GUIDE.md`](pipeline/REVIEWER_GUIDE.md)
 - **Analysis Documentation**: [`analysis/README.md`](analysis/README.md)
 
 ### Data
 - **Specimen Data**: [`analysis/data/raw/publication_data/specimen_data.xlsx`](analysis/data/raw/publication_data/specimen_data.xlsx) (46,012 specimens)
-- **Biomass Data**: [`analysis/data/raw/publication_data/biomass_data.xlsx`](analysis/data/raw/publication_data/biomass_data.xlsx) (378 samples)
+- **Biomass Data**: [`analysis/data/raw/publication_data/biomass_data.xlsx`](analysis/data/raw/publication_data/biomass_data.xlsx) (378 measurements from 54 samples × 7 size fractions)
 - **Model Performance**: [`analysis/data/raw/publication_data/model_performance.xlsx`](analysis/data/raw/publication_data/model_performance.xlsx) (73 taxa)
 
 ---
