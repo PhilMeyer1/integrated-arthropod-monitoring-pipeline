@@ -1,0 +1,80 @@
+# Arthropod Classification Pipeline - Dependencies
+# Python 3.8+ required
+# Last updated: 2024-10-25
+
+# ============================================================================
+# CORE DEPENDENCIES (Required)
+# ============================================================================
+
+# Deep Learning & Computer Vision
+ultralytics>=8.0.0              # YOLOv8/v11 for detection, segmentation, classification
+torch>=2.0.0                    # PyTorch backend (CPU version, see below for GPU)
+torchvision>=0.15.0             # Vision utilities
+opencv-python>=4.8.0            # Image processing (cv2)
+Pillow>=10.0.0                  # Image I/O (PIL)
+numpy>=1.24.0,<2.0.0            # Numerical operations
+
+# Data Handling & Export
+pandas>=2.0.0                   # Data manipulation and CSV/Excel export
+openpyxl>=3.1.0                 # Excel export (.xlsx)
+
+# Configuration & Utilities
+pyyaml>=6.0                     # YAML configuration files
+tqdm>=4.65.0                    # Progress bars
+
+# ============================================================================
+# OPTIONAL DEPENDENCIES
+# ============================================================================
+
+# Database Support (optional - can use file-based mode)
+sqlalchemy>=2.0.0               # ORM for database
+# psycopg2-binary>=2.9.0        # PostgreSQL (uncomment if using PostgreSQL)
+
+# Visualization (optional - for plots/figures)
+matplotlib>=3.7.0               # Plotting
+# seaborn>=0.12.0               # Statistical plots (uncomment if needed)
+
+# Development & Testing (optional)
+# jupyter>=1.0.0                # Jupyter notebooks
+# pytest>=7.0.0                 # Testing framework
+# black>=23.0.0                 # Code formatting
+# flake8>=6.0.0                 # Linting
+
+# ============================================================================
+# GPU SUPPORT
+# ============================================================================
+# For GPU acceleration (NVIDIA CUDA):
+# 1. Uninstall CPU-only torch:
+#    pip uninstall torch torchvision
+#
+# 2. Install GPU version (CUDA 11.8):
+#    pip install torch torchvision --index-url https://download.pytorch.org/whl/cu118
+#
+# Or for CUDA 12.1:
+#    pip install torch torchvision --index-url https://download.pytorch.org/whl/cu121
+#
+# Verify GPU support:
+#    python -c "import torch; print(torch.cuda.is_available())"
+
+# ============================================================================
+# INSTALLATION
+# ============================================================================
+# Standard installation (CPU-only):
+#   pip install -r requirements.txt
+#
+# For GPU support:
+#   pip install -r requirements.txt
+#   pip uninstall torch torchvision
+#   pip install torch torchvision --index-url https://download.pytorch.org/whl/cu118
+#
+# Development installation:
+#   pip install -r requirements.txt
+#   pip install jupyter pytest black flake8
+
+# ============================================================================
+# VERSION COMPATIBILITY
+# ============================================================================
+# Tested with:
+# - Python 3.8, 3.9, 3.10, 3.11
+# - Ubuntu 20.04/22.04, Windows 10/11, macOS 12+
+# - CUDA 11.8, 12.1 (for GPU)

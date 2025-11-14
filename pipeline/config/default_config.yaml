@@ -1,0 +1,158 @@
+# Default Configuration for Arthropod Classification Pipeline
+# Version: 1.0.0
+
+# Paths
+paths:
+  data_root: "./data"
+  raw_data: "./data/raw"
+  processed_data: "./data/processed"
+  models: "./data/models"
+  output: "./output"
+
+# Database (SQLite by default for reproducibility)
+database:
+  use_database: true  # Set to true to use database, false for file-based mode
+  url: "sqlite:///data/arthropod_pipeline.db"  # Default SQLite database
+  # For PostgreSQL production use: "postgresql://user:password@localhost:5432/arthropod_db"
+  echo: false  # Set to true for SQL query logging (debugging)
+
+# Image Processing
+image_processing:
+  # Detection settings
+  detection:
+    model_path: "./data/models/detection/yolov8n.pt"
+    confidence_threshold: 0.25
+    iou_threshold: 0.2
+    device: "cuda"  # "cuda" for GPU, "cpu" for CPU-only
+
+  # Segmentation settings
+  segmentation:
+    model_path: "./data/models/segmentation/yolov8n-seg.pt"
+    confidence_threshold: 0.25
+    mask_dilation_factor: 1.02
+    device: "cuda"
+
+  # Extraction settings
+  extraction:
+    background_color: [248, 248, 248]  # RGB near-white background
+    output_format: "png"
+
+  # Size fraction-specific settings
+  # Grid size: [rows, cols] for tiling
+  # Overlap: 0.0-1.0 (percentage)
+  size_fractions:
+    k1:  # <1 mm specimens
+      grid_size: [20, 12]
+      overlap: 0.4
+      detection_model: "./data/models/detection/yolov8n.pt"
+      segmentation_model: "./data/models/segmentation/yolov8n-seg.pt"
+    "1":  # 1-2 mm specimens
+      grid_size: [10, 8]
+      overlap: 0.3
+      detection_model: "./data/models/detection/yolov8n.pt"
+      segmentation_model: "./data/models/segmentation/yolov8n-seg.pt"
+    "2":  # 2-3 mm specimens
+      grid_size: [6, 5]
+      overlap: 0.25
+      detection_model: "./data/models/detection/yolov8n.pt"
+      segmentation_model: "./data/models/segmentation/yolov8n-seg.pt"
+    "7":  # 7-10 mm specimens
+      grid_size: [1, 1]
+      overlap: 0.0
+      detection_model: "./data/models/detection/yolov8n.pt"
+      segmentation_model: "./data/models/segmentation/yolov8n-seg.pt"
+
+# Classification
+classification:
+  # Base model for transfer learning
+  base_model: "./data/models/classification/yolo11m-cls.pt"
+
+  # Training settings
+  training:
+    image_size: 512
+    batch_size: 16
+    epochs: 50
+    device: "cuda"
+    workers: 4  # Number of data loading workers
+
+    # Data split ratios
+    train_split: 0.72
+    val_split: 0.18
+    test_split: 0.10
+
+    # Minimum images required for a taxon to be eligible for model training
+    min_images_per_taxon: 7
+
+    # Augmentation settings (HSV color space)
+    augmentation:
+      hsv_h: 0.025  # Hue
+      hsv_s: 0.3    # Saturation
+      hsv_v: 0.3    # Value
+      # Rotation augmentation (90°, 180°, 270°) applied automatically to training set
+      enable_rotation: true
+
+  # "Other" class settings (for taxa outside model scope)
+  other_class:
+    max_train_images_per_taxon: 10
+    max_val_images_per_taxon: 2
+    enable_augmentation: false
+
+  # Inference settings
+  inference:
+    batch_size: 200
+    device: "cuda"
+    root_taxon: "Arthropoda"  # Starting point for hierarchical classification
+
+  # Debris class (for filtering unwanted objects)
+  debris_class:
+    enabled: true
+    train_split: 0.8
+    val_split: 0.2
+    enable_augmentation: true
+
+# Threshold Calculation
+thresholds:
+  target_accuracy: 0.95  # 95% accuracy target
+  step_size: 0.0001      # Increment step for threshold optimization
+  max_threshold: 1.0     # Maximum threshold value
+  initial_threshold: 0.95
+
+# Export Settings
+export:
+  formats: ["excel", "csv", "json"]  # Output formats
+  include_visualizations: true
+  include_images: true
+
+  # Visualization settings
+  visualization:
+    dpi: 300
+    figure_size: [12, 8]
+    color_scheme: "viridis"
+
+  # Excel export settings
+  excel:
+    include_charts: true
+    include_summary_stats: true
+    freeze_header: true
+
+  # Image export settings
+  images:
+    max_examples_per_taxon: 50
+    thumbnail_size: [200, 200]
+    include_metadata_overlay: true
+
+# Logging
+logging:
+  level: "INFO"  # DEBUG, INFO, WARNING, ERROR, CRITICAL
+  format: "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+  file: "./logs/pipeline.log"
+  console: true
+
+# Performance
+performance:
+  num_workers: 4  # Parallel processing workers
+  batch_processing: true
+  cache_models: false  # Cache loaded models in memory (uses more RAM)
+
+# Random seed for reproducibility
+random_seed: 42

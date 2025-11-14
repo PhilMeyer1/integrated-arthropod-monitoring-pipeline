@@ -1,0 +1,27 @@
+{
+    "model_taxon_id": "INSECTA",
+    "train_count": 31,
+    "val_count": 9,
+    "class_counts": {
+        "HEMIPTERA": {
+            "taxon": "HEMIPTERA",
+            "train_taxon_count": 5,
+            "val_taxon_count": 2
+        },
+        "COLEOPTERA": {
+            "taxon": "COLEOPTERA",
+            "train_taxon_count": 10,
+            "val_taxon_count": 3
+        },
+        "HYMENOPTERA": {
+            "taxon": "HYMENOPTERA",
+            "train_taxon_count": 7,
+            "val_taxon_count": 2
+        },
+        "DIPTERA": {
+            "taxon": "DIPTERA",
+            "train_taxon_count": 9,
+            "val_taxon_count": 2
+        }
+    }
+}
