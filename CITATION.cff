@@ -1,0 +1,68 @@
+cff-version: 1.2.0
+message: "If you use this software, please cite it as below."
+type: software
+title: "Integrated Arthropod Monitoring Pipeline - Code and Data"
+version: 1.0.0
+doi: 10.5281/zenodo.17512687
+date-released: 2025-01-14
+url: "https://github.com/PhilMeyer1/integrated-arthropod-monitoring-pipeline"
+repository-code: "https://github.com/PhilMeyer1/integrated-arthropod-monitoring-pipeline"
+license: MIT
+authors:
+  - family-names: "Meyer"
+    given-names: "Philipp"
+    orcid: "https://orcid.org/XXXX-XXXX-XXXX-XXXX"
+    affiliation: "BOKU University, Vienna, Austria"
+    email: "philipp.meyer@boku.ac.at"
+  - family-names: "Scharnhorst"
+    given-names: "Victor"
+    affiliation: "BOKU University, Vienna, Austria"
+  - family-names: "Lechner"
+    given-names: "Michael"
+    affiliation: "BOKU University, Vienna, Austria"
+  - family-names: "Haslinger"
+    given-names: "Hanna"
+    affiliation: "BOKU University, Vienna, Austria"
+  - family-names: "Gierus"
+    given-names: "Martin"
+    affiliation: "BOKU University, Vienna, Austria"
+  - family-names: "Meimberg"
+    given-names: "Harald"
+    affiliation: "BOKU University, Vienna, Austria"
+keywords:
+  - arthropods
+  - biodiversity
+  - computer vision
+  - deep learning
+  - hierarchical classification
+  - size-dependent responses
+  - habitat enhancement
+  - YOLOv11
+  - ecological monitoring
+abstract: |
+  Companion repository for the Current Biology publication "Integrated arthropod
+  monitoring pipeline detects size-dependent responses". Contains the complete
+  AI-based classification pipeline and statistical analysis code for processing
+  arthropod specimens from high-resolution images to taxonomic classifications,
+  revealing size-dependent ecological responses to habitat enhancements.
+references:
+  - type: article
+    authors:
+      - family-names: "Meyer"
+        given-names: "Philipp"
+      - family-names: "Scharnhorst"
+        given-names: "Victor"
+      - family-names: "Lechner"
+        given-names: "Michael"
+      - family-names: "Haslinger"
+        given-names: "Hanna"
+      - family-names: "Gierus"
+        given-names: "Martin"
+      - family-names: "Meimberg"
+        given-names: "Harald"
+    title: "Integrated arthropod monitoring pipeline detects size-dependent responses"
+    journal: "Current Biology"
+    year: 2025
+    volume: XX
+    issue: X
+    doi: "10.1016/j.cub.2025.XX.XXX"

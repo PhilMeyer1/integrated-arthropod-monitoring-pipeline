@@ -1,0 +1,4224 @@
+---
+title: "Cheaper, Faster, More Comprehensive: AI‐based image analysis pipeline for biodiversity surveys"
+author: "Victor Scharnhorst"
+date: "`r Sys.Date()`"
+output:
+  html_document:
+    css: styles.css
+---
+
+```{r setup, include=FALSE}
+#rm(list=ls()) #deletes your current environment
+getwd()
+
+# Only set the default HTML plot hook (no chunk‐level wrapping).
+knitr::knit_hooks$set(plot = knitr::hook_plot_html)
+
+knitr::opts_chunk$set(
+  echo     = FALSE,
+  message  = FALSE,
+  warning  = FALSE,
+  cache    = FALSE,
+  fig.show = "hold",   # static ggplots in one block
+  fig.width  = 6,
+  fig.height = 4.5,
+  cache     = FALSE,
+  results   = "hide"
+)
+
+library(DT)
+library(tidyverse)
+library(rio)
+library(data.table)
+library(lubridate)
+library(ggpubr)
+library(ggsci)
+library(mgcv)
+library(ggstatsplot)
+library(patchwork)
+library(funspace)
+library(car)
+library(broom)
+library(glmnet)
+library(MASS)
+library(DHARMa)
+library(codyn)
+library(viridis)
+library(iNEXT)
+library(viridis)
+library(vegan)
+library(cluster)
+library(ggordiplots)
+library(openxlsx)
+library(svglite)
+library(car)
+library(glmmTMB)
+library(ggsci)
+
+current_date <- Sys.Date()
+formatted_date <- format(current_date, "%Y%m%d")
+options(max.print = 1000)
+
+treatment_palette <- c(
+  control = "#414487FF",  # medium gray
+  eco     = "#7AD151FF"    # rich green
+)
+
+#treatment_palette <- viridis(2, begin = 0.2, end = 0.8)
+#names(treatment_palette) <- c("control", "eco")
+#treatment_palette
+```
+# Key Unifying Patterns
+
+**Size‐fraction gradient:**  
+* For every 1 mm increase in body length, local Shannon diversity drops ~25 %; the number of individuals drops ~43 %; yet total biomass gains ~29 %. In other words, small fractions host many species and many individuals but each contributes little to weight, while large fractions—though species‐poor and rare—dominate mass.  
+* Eco treatment particularly amplifies small‐bodied abundance (∼60 % higher baseline), steepening the size→abundance decline and reinforcing that small fractions are both more diverse and more prolific under ecological management.
+
+**Temperature as a universal positive driver:**  
+* A 1 °C rise elevates diversity by ~2.5 %, abundance by ~7.8 %, and biomass by ~9.6 %. This suggests warmer microclimates stimulate arthropod activity, reproduction, and growth, across size classes.  
+
+**Trade‐off among diversity, abundance, and biomass:**  
+* When many small individuals pack into a fraction, richness soars but total mass remains low. When one or two large species dominate a fraction, biomass is high but richness is low.  
+* Including small‐bodied taxa is therefore essential: they drive α‐diversity and often determine overall abundance patterns. Most traditional surveys that omit < 2 mm arthropods would miss up to 80 % of diversity and > 50 % of numerical abundance.
+
+**Eco‐management’s subtle effect:**  
+* Eco plots do not differ in total biomass or richness once size and weather are held constant, but they do harbor more small‐bodied individuals - which host the highest  α‐diversity - and feature distinct communities from control plots that are defined by species gains. In turn, this could cascade into higher pollination services or faster decomposition even if total weight remains unchanged.  
+
+
+
+# 1. load raw data
+```{r , warning = FALSE, message = FALSE }
+results_raw <- import("../data/raw/publication_data/specimen_data.xlsx",  sheet = 1, stringsAsFactors = TRUE)  # convenience function from package "rio"
+
+model_summary_raw <- import("../data/raw/publication_data/specimen_data.xlsx",  sheet = 2, stringsAsFactors = TRUE)
+
+taxa_summary_raw <- import("../data/raw/publication_data/model_performance.xlsx",  sheet = 3, stringsAsFactors = TRUE)
+
+bm2024 <- import("../data/raw/publication_data/biomass_data.xlsx", skip = 2)
+bm_2023 <- import("../data/raw/publication_data/biomass_data.xlsx", skip = 3)
+```
+
+
+# 2. dataframe prep
+## prep results data
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+temp <- results_raw %>% 
+  mutate(count = 1) %>% 
+  group_by(location, year, month, day, Groessenfraktion) %>% 
+  dplyr::summarise(sum_count = sum(count)) #basst
+
+results_prep <- results_raw %>% 
+  rename(size = Groessenfraktion) %>% 
+  
+  filter(is_valid == "True" ) %>% #& size != "k1" # & year == "2023"
+
+  mutate(species_name = case_when(
+    is.na(family) ~ order,
+    TRUE ~ family
+  )) %>% 
+  filter(!is.na(order)) %>% 
+  unite("species", c(species_name, size), remove = F, sep = "#") %>% 
+  mutate(date = make_date(year, month, day),
+         day_of_year = yday(date),
+         species = as.factor(species)) %>% 
+  unite("unit", c(location, year, day_of_year), remove = F, sep = "#") %>% 
+  unite("unit#size", c(unit, size), remove = F, sep = "#") #%>% 
+  
+  #filter(!unit %in% c("Zissersdorf#2023#124", "Zissersdorf#2023#204", "Zissersdorf#2024#170"))
+
+results_prep$Hecken <- factor(results_prep$Hecken, levels = c("True", "False"))
+results_prep$Wildblumensaat <- factor(results_prep$Wildblumensaat, levels = c("True", "False"))
+
+
+levels(results_prep$species)
+summary(results_prep$species)
+
+results_prep %>% 
+  group_by(species) %>%
+  mutate(count = 1) %>% 
+  summarise(sum_species = sum(count)) %>% 
+  ungroup() %>% 
+  mutate(total = sum(sum_species)) %>% 
+  group_by(species) %>% 
+  mutate(share_species = round(sum_species/total, 3)) %>% 
+    datatable(extensions = 'Buttons',
+            options = list(dom = 'Blfrtip',
+                           buttons = c('copy', 'csv', 'excel', 'pdf', 'print'),
+                           lengthMenu = list(c(10,25,50,-1),
+                                      c(10,25,50,"All"))))
+str(results_prep)
+results_prep %>% 
+  unite("species", c(family, size), remove = F, sep = "#") %>%
+  group_by(species) %>%
+  mutate(count = 1) %>% 
+  summarise(sum_species = sum(count)) %>% 
+  ungroup() %>% 
+  mutate(total = sum(sum_species)) %>% 
+  group_by(species) %>% 
+  mutate(share_species = round(sum_species/total, 3)) %>% 
+    datatable(extensions = 'Buttons',
+            options = list(dom = 'Blfrtip',
+                           buttons = c('copy', 'csv', 'excel', 'pdf', 'print'),
+                           lengthMenu = list(c(10,25,50,-1),
+                                      c(10,25,50,"All"))))
+
+str(results_prep)
+
+# Overall NA summary
+results_prep %>%
+  dplyr::summarize(across(all_of(14:26),
+                   ~ mean(is.na(.)) * 100,
+                   .names = "{.col}")) %>%
+  pivot_longer(cols = everything(), names_to = "Column", values_to = "NA_Percentage") %>% 
+  mutate(NA_Percentage = round(NA_Percentage, 3)) %>% 
+      datatable(extensions = 'Buttons',
+            options = list(dom = 'Blfrtip',
+                           buttons = c('copy', 'csv', 'excel', 'pdf', 'print'),
+                           lengthMenu = list(c(10,25,50,-1),
+                                      c(10,25,50,"All"))))
+
+# NA by size
+
+results_prep %>%
+  group_by(size) %>%
+  dplyr::summarize(across(all_of(14:26),
+                   ~ sum(is.na(.)),
+                   .names = "{.col}")) %>%
+  pivot_longer(cols = -size, names_to = "Column", values_to = "NA_Count") %>%
+  left_join(results_prep %>%
+  dplyr::summarize(across(all_of(14:26),
+                   ~ sum(is.na(.)),
+                   .names = "{.col}")) %>%
+  pivot_longer(cols = everything(), names_to = "Column", values_to = "Total_NA"), by = "Column") %>%
+  mutate(Percentage_Contribution = (NA_Count / Total_NA) * 100) %>%
+  dplyr::select(size, Column, NA_Count, Total_NA, Percentage_Contribution) %>% 
+  mutate(Percentage_Contribution = round(Percentage_Contribution, 3)) %>% 
+  left_join(results_prep %>%
+  dplyr::summarize(across(all_of(14:26),
+                   ~ mean(is.na(.)) * 100,
+                   .names = "{.col}")) %>%
+  pivot_longer(cols = everything(), names_to = "Column", values_to = "Total_NA_Percentage") %>% 
+  mutate(Total_NA_Percentage = round(Total_NA_Percentage, 3))) %>% 
+      datatable(extensions = 'Buttons',
+            options = list(dom = 'Blfrtip',
+                           buttons = c('copy', 'csv', 'excel', 'pdf', 'print'),
+                           lengthMenu = list(c(10,25,50,-1),
+                                      c(10,25,50,"All"))))
+
+spec_data_prep <- results_prep %>% 
+  mutate(species_id = species,
+         site = location) %>% 
+  unite("site_date", c(site, date), remove = F, sep = "#") %>% 
+  mutate(count = 1)
+
+```
+
+## model summary data
+```{r}
+model_summary_prep <- model_summary_raw %>% 
+  #rename(model = Actual_Scientific_Name) %>% 
+ # mutate(log_unique_objects = log(unique_objects))
+  mutate(across(where(is.character), as.factor))
+
+size_summary <- results_prep %>% 
+  group_by(family) %>% 
+  #drop_na(family) %>% 
+  mutate(size = as.numeric(case_when(
+    size == "k1" ~ "0.1",
+    TRUE ~ size))) %>% 
+  dplyr::summarise(mean_size = mean(size)) %>% 
+  rename(model = family) %>% 
+  mutate(size_bin = case_when(
+mean_size < 2 ~ "Small (<2 mm)", 
+mean_size < 5 ~ "Medium (2–5 mm)", 
+mean_size >= 5 ~"Large (>5 mm)")
+) %>% 
+  drop_na(model)
+
+taxa_summary_prep <- taxa_summary_raw %>% 
+  rename(model = Actual_Scientific_Name) %>% 
+ # mutate(log_unique_objects = log(unique_objects))
+  mutate(across(where(is.character), as.factor)) %>% 
+  mutate(rank = case_when(
+    Actual_Rank == "subclass" ~ "class",
+    TRUE ~ Actual_Rank
+  )) %>% 
+  filter(rank %in% c("class", "order", "family")) %>% 
+  mutate(rank = factor(rank, levels = c( "class", "order", "family"))) %>% 
+  droplevels() %>% 
+  left_join(size_summary) %>% 
+  droplevels() %>% 
+  mutate(accuracy_with_threshold = as.character(accuracy_with_threshold)) %>% 
+  mutate(accuracy_with_threshold = case_when(
+           accuracy_with_threshold == "0" ~ NA,
+           TRUE ~ accuracy_with_threshold),
+           accuracy_with_threshold = as.numeric(accuracy_with_threshold)
+         )
+
+
+results_prep$order <- as.factor(results_prep$order)
+summary(results_prep$order
+        )
+
+test <- results_prep %>% 
+  group_by(order) %>% 
+  dplyr::summarise(n_family = n_distinct(family))
+```
+
+## Environmental Data
+```{r dataframe environmental preparation, echo=FALSE, fig.height=4, fig.width=6, message=FALSE, warning=FALSE, eval=FALSE}
+library(httr)
+library(jsonlite)
+library(openxlsx)
+
+# Example coordinates for several sampling sites in Austria
+df <- results_prep %>% 
+  dplyr::select(location, x_coordinate, y_coordinate) %>% 
+  distinct() %>% 
+  ungroup() %>% 
+  droplevels() %>% 
+  rename(site_id = location,
+         latitude = x_coordinate,
+         longitude = y_coordinate) 
+
+library(httr)
+library(jsonlite)
+
+start_date <- "2023-01-01"
+end_date   <- "2024-12-31"
+params     <- "RR,TN,TX"
+base_url   <- "https://dataset.api.hub.geosphere.at/v1/timeseries/historical/spartacus-v2-1d-1km"
+
+all_data <- data.frame()
+
+for (i in seq_len(nrow(df))) {
+  sid <- df$site_id[i]
+  lat <- df$latitude[i]      # <-- Make sure column names match!
+  lon <- df$longitude[i]
+  
+  url_call <- paste0(
+    base_url,
+    "?parameters=", params,
+    "&lat_lon=", lat, ",", lon,
+    "&start=",    start_date,
+    "&end=",      end_date
+  )
+  
+  resp <- GET(url_call)
+  stop_for_status(resp)
+  
+resp_json <- fromJSON(content(resp, "text", encoding = "UTF-8"), 
+                      flatten = TRUE)
+
+# If there's no 'features' or it's empty, skip
+if (!"features" %in% names(resp_json) || nrow(resp_json$features) == 0) next
+
+df_features <- resp_json$features
+
+# Now these columns should exist
+rr_vals <- df_features$properties.parameters.RR.data[[1]]
+tn_vals <- df_features$properties.parameters.TN.data[[1]]
+tx_vals <- df_features$properties.parameters.TX.data[[1]]
+
+  
+  # Ensure the length matches your timestamps
+  date_vals <- as.Date(sub("T.*", "", resp_json$timestamps))
+  
+  tmp_df <- data.frame(
+    site_id = sid,
+    date    = date_vals,
+    RR      = rr_vals,
+    TN      = tn_vals,
+    TX      = tx_vals,
+    stringsAsFactors = FALSE
+  )
+  
+  all_data <- rbind(all_data, tmp_df)
+}
+
+
+climate_data <- all_data %>% 
+  mutate(across(is.character, as.factor)) %>% 
+  rename(location = site_id)
+
+str(climate_data)
+
+## Env data
+temp <- results_prep %>% 
+  dplyr::select(3:9, 12:14, 27:28, 31:32) %>% 
+  #dplyr::select(-species_name) %>% 
+  distinct() 
+
+env_prep_size <- inner_join(climate_data, temp) %>% 
+  
+  mutate(treatment2 = case_when(
+    Wildblumensaat == "False" & Hecken == "False" ~ "c",
+    Wildblumensaat == "True" & Hecken == "True" ~ "w+h",
+    Wildblumensaat == "False" & Hecken == "True" ~ "h",
+    TRUE ~ NA
+  )) %>% 
+  
+    mutate(treatment = case_when(
+    Hecken == "False" ~ "control",
+    Hecken == "True" ~ "eco",
+    TRUE ~ NA
+  )) %>% 
+  ungroup() %>% 
+  droplevels() %>% 
+  distinct() %>% 
+  group_by(location, date) %>% 
+  mutate(temp_mean = mean(TX:TN)) %>% 
+  droplevels() %>% 
+  ungroup() %>% 
+  mutate(across(is.character, as.factor)) %>%
+  mutate(site = location) %>% 
+  unite("site_date", c(site, date), remove = F, sep = "#")#%>% 
+  #mutate(location = as.factor(case_when(
+  #  str_detect(location, "Fronsburg") ~ "Fronsburg",
+  #  str_detect(location, "Kremsmünster") ~ "Kremsmünster",
+  #  TRUE ~ location
+  #))) 
+levels(env_prep_size$location)
+
+write.xlsx(env_prep_size, file = paste0("../data/processed/hedges_env_prep_size_", formatted_date, ".xlsx"))
+
+env_prep <- inner_join(climate_data, temp) %>% 
+  mutate(treatment2 = case_when(
+    Wildblumensaat == "False" & Hecken == "False" ~ "c",
+    Wildblumensaat == "True" & Hecken == "True" ~ "w+h",
+    Wildblumensaat == "False" & Hecken == "True" ~ "h",
+    TRUE ~ NA
+  )) %>% 
+  
+    mutate(treatment = case_when(
+    Hecken == "False" ~ "control",
+    Hecken == "True" ~ "eco",
+    TRUE ~ NA
+  )) %>%
+    dplyr::select(-contains("size")) %>% 
+  ungroup() %>% 
+  droplevels() %>% 
+  distinct() %>% 
+  group_by(location, date) %>% 
+  mutate(temp_mean = mean(TX:TN)) %>% 
+  droplevels() %>% 
+  ungroup() %>% 
+  mutate(across(is.character, as.factor)) %>%
+  mutate(site = location) %>% 
+  unite("site_date", c(site, date), remove = F, sep = "#") %>% 
+  mutate(yday = day_of_year) %>% 
+  arrange(site_date) #%>% 
+  #mutate(location = as.factor(case_when(
+  #  str_detect(location, "Fronsburg") ~ "Fronsburg",
+  #  str_detect(location, "Kremsmünster") ~ "Kremsmünster",
+  #  TRUE ~ location
+  #))) 
+
+write.xlsx(env_prep, file = paste0("../data/processed/hedges_env_prep_", formatted_date, ".xlsx"))
+
+levels(env_prep$location)
+str(env_prep)
+```
+
+## load prep data 
+```{r}
+# Preprocessed data - commented out, will be generated by this script
+# env_prep <- import("hedges_env_prep_20250819.xlsx",  sheet = 1, stringsAsFactors = TRUE)
+# env_prep_size <- import("hedges_env_prep_size_20250819.xlsx",  sheet = 1, stringsAsFactors = TRUE)
+
+spec_matrix <- spec_data_prep %>% 
+  dplyr::select(date, site, species_id, size) %>%
+  #filter(determination_status == "species") %>% 
+  group_by(date, site, species_id) %>% 
+  mutate(n = 1) %>% 
+  dplyr::summarise(count = sum(n)) %>% 
+  unite("site_date", c(site, date), remove = F, sep = "#") %>% 
+  ungroup() %>% 
+  filter(!is.na(species_id)) %>% # exclude sampling sites where no determined species was found
+  dplyr::select(site_date, species_id, count) %>% 
+  pivot_wider(values_from = "count", names_from = "species_id", values_fill = 0) %>% 
+  arrange(site_date) %>% 
+  column_to_rownames(var = "site_date")
+
+spec_matrix_size <- spec_data_prep %>% 
+  dplyr::select(day_of_year, site, species_id, size) %>%
+  #filter(determination_status == "species") %>% 
+  group_by(day_of_year, site, species_id, size) %>% 
+  mutate(n = 1) %>% 
+  dplyr::summarise(count = sum(n)) %>% 
+  unite("site_date", c(site, day_of_year, size), remove = F, sep = "#") %>% 
+  ungroup() %>% 
+  filter(!is.na(species_id)) %>% # exclude sampling sites where no determined species was found
+  dplyr::select(site_date, species_id, size, count) %>% 
+  pivot_wider(values_from = "count", names_from = "species_id", values_fill = 0) %>% 
+  arrange(site_date) %>% 
+  column_to_rownames(var = "site_date") %>% 
+  dplyr::select(-size)
+```
+
+
+## biomass data
+```{r}
+biomass_prep <- bm2024 %>% 
+  dplyr::select(-c(3, 13)) %>% 
+  drop_na(ID) %>% 
+  rename(biomass_total = 12,
+         zuordnung_id = ID) %>%
+    dplyr::select(-Datum) %>% 
+  mutate(year = "2024") %>% 
+  mutate(
+    `7` = rowSums( 
+      dplyr::select(., `10`, `7`),    # grab columns named “10” and “7”
+      na.rm = TRUE             # treat any NA as 0
+    )
+  ) %>% 
+  relocate(zuordnung_id, Ort, `7`) %>% 
+  mutate(across(everything(), ~ replace_na(.x, 0))) %>%
+  dplyr::select(-`10`) %>% 
+  full_join(
+     bm_2023 %>%
+   dplyr::select(-c(1, 13:last_col())) %>% 
+    rename(biomass_total = 11,
+         zuordnung_id = `ID neu`,
+         "7" = 4,
+         "5" = 5,
+         "3" = 6,
+         "2" = 7,
+         "1.5" = 8,
+         "1" = 9,
+         "k1" = 10) %>% 
+    dplyr::select(-Datum) %>% 
+   mutate(year = "2023") %>% 
+  mutate(across(everything(), ~ replace_na(.x, 0)))
+    
+  ) %>% 
+  rename(location = Ort) %>% 
+  pivot_longer(3:9, values_to = "biomass_size", names_to = "size") %>% 
+  full_join(results_raw %>% 
+              dplyr::select(zuordnung_id, is_valid) %>% 
+              distinct()) %>% 
+  filter(is_valid == "True") %>% 
+  dplyr::select(-is_valid)
+
+temp <- spec_data_prep %>% 
+  #full_join(env) %>% 
+  drop_na(count) %>% 
+  group_by(site_date, date, site, size) %>% 
+  dplyr::summarise(value = sum(count)) %>% 
+  full_join(env_prep_size) %>% 
+    mutate(size = case_when(
+    size == "k1" ~ "0.1",
+    TRUE ~ size
+  )) %>% 
+mutate(size = as.numeric(size)) %>% 
+  rename(yday = day_of_year) %>% 
+  ungroup() %>% 
+  dplyr::select(zuordnung_id, size, value) %>% 
+  rename(abundance = value)
+
+biomass_test <- full_join(biomass_prep %>% mutate(size = as.numeric(case_when(
+    size == "k1" ~ "0.1",
+    TRUE ~ size))), temp)
+
+library(openxlsx)
+write.xlsx(biomass_test, paste0("../data/processed/biomass_test_data_", formatted_date, ".xlsx"))
+```
+# 3. Analysis
+## 3.0 Environmental Data Visualization
+
+```{r fig.height=7, fig.width=13, results=FALSE, include = FALSE}
+temp <- env_prep %>% 
+  mutate(
+  treatment = factor(treatment, levels = c("eco","control")))
+
+library(ggstatsplot)
+library(patchwork)
+
+# 1) Temperatur nach Tag
+p_temp1 <- grouped_ggscatterstats(
+  data                 = temp,
+  x                    = day_of_year,
+  y                    = TN,
+  grouping.var         = treatment,
+  type                 = "nonparametric",
+  pairwise.comparisons = TRUE,
+  p.adjust.method      = "bonferroni",
+  #centrality.plotting  = TRUE,
+  #centrality.type      = "median_ci",
+  #plot.type            = "box",
+  xlab                 = "Day of Year",
+  ylab                 = "Temperature Min (°C)",
+  #title                = "Temperatur",
+  #ggtheme              = theme_minimal(),
+  ggplot.component     = list(
+      scale_color_manual(values = treatment_palette),
+      scale_fill_manual(values = treatment_palette)
+  )
+)
+
+print(p_temp1)
+
+p_temp2 <- grouped_ggscatterstats(
+  data                 = temp,
+  x                    = day_of_year,
+  y                    = TX,
+  grouping.var         = treatment,
+  type                 = "nonparametric",
+  pairwise.comparisons = TRUE,
+  p.adjust.method      = "bonferroni",
+  #centrality.plotting  = TRUE,
+  #centrality.type      = "median_ci",
+  #plot.type            = "box",
+  xlab                 = "Day of Year",
+  ylab                 = "Temperature Max (°C)",
+  #title                = "Temperatur",
+  #ggtheme              = theme_minimal(),
+  ggplot.component     = list(
+      scale_color_manual(values = treatment_palette),
+      scale_fill_manual(values = treatment_palette)
+  )
+)
+
+print(p_temp2)
+
+p_temp3 <- grouped_ggscatterstats(
+  data                 = temp,
+  x                    = day_of_year,
+  y                    = temp_mean,
+  grouping.var         = treatment,
+  type                 = "nonparametric",
+  pairwise.comparisons = TRUE,
+  p.adjust.method      = "bonferroni",
+  #centrality.plotting  = TRUE,
+  #centrality.type      = "median_ci",
+  #plot.type            = "box",
+  xlab                 = "Day of Year",
+  ylab                 = "Temperature Mean (°C)",
+  #title                = "Temperatur",
+  #ggtheme              = theme_minimal(),
+  ggplot.component     = list(
+      scale_color_manual(values = treatment_palette),
+      scale_fill_manual(values = treatment_palette)
+  )
+)
+
+print(p_temp3)
+
+
+# 2) Rainfall
+p_rain <- grouped_ggscatterstats(
+  data                 = temp,
+  x                    = day_of_year,
+  y                    = RR,
+  grouping.var         = treatment,
+  type                 = "nonparametric",
+  pairwise.comparisons = TRUE,
+  p.adjust.method      = "bonferroni",
+  #centrality.plotting  = TRUE,
+  #centrality.type      = "median_ci",
+  #plot.type            = "box",
+  xlab                 = "Rainfall (mm)",
+  #title                = "Temperatur",
+  #ggtheme              = theme_minimal(),
+  ggplot.component     = list(
+      scale_color_manual(values = treatment_palette),
+      scale_fill_manual(values = treatment_palette)
+  )
+)
+print(p_rain)
+```
+
+> **Temperature and Humidity Plots for Supplements**
+
+<div class="plot-container">
+```{r fig.align='default', fig.show='hold', fig.height=14, fig.width=13, results=TRUE}
+library(patchwork)
+
+
+# 3) Combine with correct parentheses so tags apply to all panels
+combined <- (p_temp1 / p_temp2 / p_temp3 / p_rain) +
+  plot_annotation(
+    tag_levels = 'a',
+    tag_prefix = '(',
+    tag_suffix = ')'
+  ) & 
+  theme(
+    plot.tag          = element_text(face = "bold", size = 14),
+    plot.tag.position = c(0, 1)
+  )
+
+print(combined)
+
+file_out <- paste0("hedges_temp_rain_plot", formatted_date, ".png")
+ggsave(file_out, combined, width = 13, height = 14, dpi = 600)
+
+# this will print the filename into your HTML
+cat("✅ Temp and rainfall figure saved as: ", file_out, "\n")
+```
+</div>
+
+## 3.1 Community Analyses
+### 3.1.1 Diversity
+#### Section Summary
+
+We fitted a Gamma‐family GLMM with log link to exponential Shannon diversity (`qD`) in chicken outdoor enclosures, including `treatment`, `temperature`, `day of year`, and `size` as covariates, plus a random intercept for `site`. The final model showed good fit (AIC = 1372.0; BIC = 1399.3).
+
+**Key fixed‐effect estimates** (log‐scale ± SE, *z*, *p*):
+
+* **Temperature**: 0.025 ± 0.007, *z* = 3.54, *p* < 0.001
+  ⇨ ∼2.5 % increase in diversity per +1 °C (exp(0.025) ≈ 1.025).
+* **Day of Year**: 0.002 ± 0.001, *z* = 1.57, *p* = 0.117
+  ⇨ ∼0.2 % increase in diversity per day (exp(0.002) ≈ 1.002), not significant.
+* **Arthropod Size (mm)**: –0.291 ± 0.009, *z* = –33.33, *p* < 0.001
+  ⇨ ∼25 % lower diversity per +1 mm (exp(–0.291) ≈ 0.747).
+* **Treatment (eco vs control)**: 0.010 ± 0.055, *z* = 0.17, *p* = 0.863
+  ⇨ ∼1 % higher baseline diversity in eco enclosures (exp(0.010) ≈ 1.010), not significant.
+
+**Random‐effect variance** (site intercept) = 0.0044 (SD = 0.0666).
+**DHARMa diagnostics**: uniformity *p* = 0.671; dispersion *p* = 0.136; outlier test *p* = 0.515 — no model violations detected.
+
+> **Ecological interpretation:**
+> Temperature remains a modest positive driver of diversity (\~2.5 % per °C), while seasonal progression shows a slight non‐significant increase. Most strikingly, diversity decreases sharply with increasing arthropod size fraction (\~25 % loss per mm), indicating that smaller‐bodied assemblages support much higher local diversity. The eco treatment still has no detectable effect, implying that size‐structure and abiotic factors, rather than management alone, govern alpha diversity in these enclosures.
+
+#### Functions
+```{r}
+
+estimate_hill_diversity <- function(spec_data_prep, spec_matrix, env_prep, count_col, join_key, group_key, level = NULL) {
+  # Convert column inputs to symbols
+  count_col <- rlang::ensym(count_col)
+  join_key <- rlang::ensym(join_key)
+  group_key <- rlang::ensym(group_key)
+
+  # Compute total individuals per sample
+  temp2 <- spec_data_prep %>%
+    dplyr::full_join(env_prep, by = rlang::as_string(join_key)) %>%
+    tidyr::drop_na(!!count_col) %>%
+    dplyr::group_by(!!group_key) %>%
+    dplyr::summarise(Sum = sum(!!count_col), .groups = 'drop')
+
+  # Determine rarefaction level if not provided
+  if (is.null(level)) {
+    level <- 2 * min(temp2$Sum)
+  }
+
+  # Transpose species matrix for iNEXT
+  temp_mat <- t(spec_matrix)
+
+  # Estimate diversity using iNEXT
+  div_raw <- iNEXT::estimateD(temp_mat, datatype = 'abundance', base = 'size', level = level)
+
+  # Tidy iNEXT output
+  div_prep <- div_raw %>%
+    dplyr::select(-c(m, Method, SC)) %>%
+    dplyr::rename(order = Order.q) %>%
+    reshape2::melt(id.vars = c('Assemblage', 'order')) %>%
+    dplyr::filter(variable == 'qD') %>%
+    dplyr::select(value, Assemblage, order) %>%
+    dplyr::mutate(
+      order = factor(order),
+      !!join_key := as.factor(Assemblage)
+    ) %>%
+    dplyr::select(-Assemblage) %>%
+    dplyr::full_join(env_prep, by = rlang::as_string(join_key)) %>%
+    dplyr::filter(!is.na(value))
+
+  return(div_prep)
+}
+
+# Function to plot grouped diversity at q = 0,1,2
+plot_hill_diversity <- function(div_prep, x_col, y_col = 'value', facet_col, pairwise.display = 'all', type = 'nonparametric') {
+  x_col     <- ensym(x_col)
+  y_col     <- ensym(y_col)
+  facet_col <- ensym(facet_col)
+
+  # Create plots for each Hill order
+  p0 <- div_prep %>%
+    dplyr::filter(order == 0) %>%
+    ggstatsplot::grouped_ggbetweenstats(
+      x = !!x_col, y = !!y_col,
+      grouping.var = !!facet_col,
+      pairwise.display = pairwise.display,
+      type = type,
+      ylab = 'Diversity (q = 0)'
+    )
+
+  p1 <- div_prep %>%
+    dplyr::filter(order == 1) %>%
+    ggstatsplot::grouped_ggbetweenstats(
+      x = !!x_col, y = !!y_col,
+      grouping.var = !!facet_col,
+      pairwise.display = pairwise.display,
+      type = type,
+      ylab = 'Diversity (q = 1)'
+    )
+
+  p2 <- div_prep %>%
+    dplyr::filter(order == 2) %>%
+    ggstatsplot::grouped_ggbetweenstats(
+      x = !!x_col, y = !!y_col,
+      grouping.var = !!facet_col,
+      pairwise.display = pairwise.display,
+      type = type,
+      ylab = 'Diversity (q = 2)'
+    )
+
+  # Store in named list
+  hill_plots <- list(
+    q0 = p0,
+    q1 = p1,
+    q2 = p2
+  )
+  return(hill_plots)
+}
+
+# Function to compute & plot iNEXT curves for any grouping (global)
+plot_hill_rarefaction_global <- function(spec_matrix, env_prep, grouping_var, rowname_var, q_values = c(0,1,2), datatype = 'abundance') {
+  grouping_var <- rlang::ensym(grouping_var)
+  grouping_sym <- sym(grouping_var)
+  
+  df <- spec_matrix %>%
+    rownames_to_column(var = rlang::as_string(rowname_var)) %>%
+    dplyr::left_join(env_prep %>% dplyr::select(grouping_sym, !!rowname_var), by = rlang::as_string(rowname_var)) %>%
+    dplyr::select(-c(!!rowname_var)) %>% 
+    dplyr::group_by(!!grouping_sym) %>%
+    dplyr::summarise(across(where(is.numeric), sum))
+
+  mat <- df %>%
+    column_to_rownames(rlang::as_string(grouping_var)) %>%
+    as.matrix()
+
+  ab_list <- purrr::map(rownames(mat), ~ mat[.x, ])
+  names(ab_list) <- rownames(mat)
+
+  iN_global <- iNEXT::iNEXT(ab_list, q = q_values, datatype = datatype)
+
+  p1 <- iNEXT::ggiNEXT(iN_global, type = 1,
+                       facet.var = "Order.q",
+                       color.var = "Assemblage") +
+        ggtitle(paste("Rarefaction/Extrapolation by", grouping_sym)) +
+        labs(x = "Sample size (m)",
+             y = "Diversity (qD)",
+             color = grouping_sym) +
+    theme_minimal(base_size = 18)+
+    scale_color_manual(values = treatment_palette)+
+    scale_fill_manual(values = treatment_palette)
+
+  p2 <- iNEXT::ggiNEXT(iN_global, type = 2,
+                       facet.var = "Order.q",
+                       color.var = "Assemblage") +
+        ggtitle(paste("Sample Coverage by", grouping_sym)) +
+        labs(x = "Sample coverage (SC)",
+             y = "Diversity (qD)",
+             color = grouping_sym) +
+    theme_minimal(base_size = 18)+
+    scale_color_manual(values = treatment_palette)+
+    scale_fill_manual(values = treatment_palette)
+
+  return(list(rarecurves = p1, saturationcurves = p2))
+}
+
+# Function to compute & plot iNEXT curves for two-level grouping (e.g., park x treatment)
+plot_hill_rarefaction_nested <- function(spec_matrix, env_prep, level1_var, level2_var, rowname_var, q_values = c(0,1,2), datatype = 'abundance') {
+  level1_var <- rlang::ensym(level1_var)
+  level2_var <- rlang::ensym(level2_var)
+  
+  df <- spec_matrix %>%
+    rownames_to_column(var = rlang::as_string(rowname_var)) %>%
+    dplyr::left_join(env_prep %>% dplyr::select(!!level1_var, !!level2_var, !!rowname_var), by = rlang::as_string(rowname_var)) %>%
+    dplyr::select(-c(!!rowname_var)) %>%
+    dplyr::group_by(!!level1_var, !!level2_var) %>%
+    dplyr::summarise(across(where(is.numeric), sum))
+
+
+  levels1 <- unique(df[[rlang::as_string(level1_var)]])
+  plot_list <- purrr::map(levels1, function(l1) {
+    df_sub <- df %>% dplyr::filter(!!level1_var == l1)
+    mat <- df_sub %>% column_to_rownames(rlang::as_string(level2_var)) %>%
+      dplyr::select(-!!level1_var) %>%
+      as.matrix()
+    ab_list <- purrr::map(rownames(mat), ~ mat[.x, ])
+    names(ab_list) <- rownames(mat)
+  iN <- iNEXT::iNEXT(ab_list, q = q_values, datatype = datatype)
+  p1 <- iNEXT::ggiNEXT(iN, type = 1,
+                       facet.var = "Order.q",
+                       color.var = "Assemblage") +
+        ggtitle(paste("Rarefaction -", l1)) +
+        labs(x     = "Sample size (m)",
+             y     = "Diversity (qD)",
+             color = rlang::as_string(level2_var)) +
+        theme_minimal()
+
+  p2 <- iNEXT::ggiNEXT(iN, type = 2,
+                       facet.var = "Order.q",
+                       color.var = "Assemblage") +
+        ggtitle(paste("Saturation -", l1)) +
+        labs(x     = "Sample coverage (SC)",
+             y     = "Diversity (qD)",
+             color = rlang::as_string(level2_var)) +
+        theme_minimal()
+    list(rarecurves = p1, saturationcurves = p2)
+  })
+  names(plot_list) <- levels1
+  return(plot_list)
+}
+
+estimate_hill_diversity_by_size <- function(spec_data_prep,
+                                            env_prep_size,
+                                            count_col,
+                                            join_key,
+                                            group_key,
+                                            level = NULL) {
+  # capture column names
+  count_sym    <- ensym(count_col)
+  join_sym     <- sym(join_key)
+  group_sym    <- sym(group_key)
+
+  # get all size‐fractions
+  sizes <- unique(env_prep_size$size)
+
+  # loop over each size fraction
+  div_list <- lapply(sizes, function(sz) {
+    # 1) filter data for this size
+    spec_sub <- spec_data_prep %>% filter(size == sz)
+    env_sub  <- env_prep_size  %>% filter(size == sz)
+
+    # 2) build species × sample matrix for this size
+    mat_df <- spec_sub %>%
+      group_by(!!join_sym, species_id) %>%
+      summarise(count = sum(!!count_sym), .groups = 'drop') %>%
+      pivot_wider(names_from = species_id,
+                  values_from = count,
+                  values_fill = 0)
+
+    mat    <- as.matrix(mat_df %>% dplyr::select(-!!join_sym))
+    rownames(mat) <- mat_df[[(join_sym)]]
+
+    # 3) determine rarefaction level if needed
+    totals <- spec_sub %>%
+      group_by(!!group_sym) %>%
+      summarise(Sum = sum(!!count_sym), .groups = 'drop')
+    lvl <- level %||% (2 * min(totals$Sum))
+
+    # 4) estimate diversity with iNEXT
+    div_raw <- iNEXT::estimateD(t(mat),
+                                datatype = 'abundance',
+                                base     = 'size',
+                                level    = lvl)
+
+    # 5) tidy output and re‐join env data using pivot_longer
+    div_prep <- div_raw %>%
+      dplyr::select(-c(m, Method, SC)) %>%
+      rename(order = Order.q) %>%
+      pivot_longer(
+        cols = -c(Assemblage, order),
+        names_to  = "variable",
+        values_to = "value"
+      ) %>%
+      filter(variable == 'qD') %>%
+      dplyr::select(value, Assemblage, order) %>%
+      mutate(
+        order = factor(order),
+        !!join_sym := Assemblage
+      ) %>%
+      dplyr::select(-Assemblage) %>%
+      full_join(env_sub, by = join_key) %>%
+      filter(!is.na(value)) %>%
+      mutate(size = sz)
+
+    return(div_raw)
+  })
+
+  # bind all size‐fractions together
+  bind_rows(div_list)
+}
+
+# Estimate diversity grouping by 'site_date'
+#div_prep <- estimate_hill_diversity(
+#  spec_data_prep, 
+#  spec_matrix, 
+#  env_prep,
+#  count_col = count,        # column in spec_data_prep
+#  join_key  = site_date,    # key for joining matrices
+#  group_key = site_date     # sample identifier
+#)
+```
+
+#### iNEXT
+
+**iNEXT Plots: Diversity Estimates and Coverage**
+
+<div class="plot-container">
+```{r fig.align='default', fig.height=6, fig.show='hold', fig.width=12, message=FALSE, warning=FALSE}
+# Function to estimate Hill diversity (q = 0,1,2) per sample
+# Global iNEXT curves by treatment
+
+global_plots <- plot_hill_rarefaction_global(
+  spec_matrix, 
+  env_prep, 
+  grouping_var = "treatment",
+  rowname_var = "site_date"
+)
+#purrr::walk(hill_plots, ~ print(.x))
+purrr::walk(global_plots, ~ print(.x))
+#purrr::walk(park_plots, ~ print(.x))
+```
+</div>
+
+
+#### GLMM
+```{r, include=FALSE, results=FALSE, echo=FALSE}
+library(dplyr)
+library(glmmTMB)
+library(DHARMa)
+library(performance)
+library(car)
+library(lubridate)
+# GAUSSIAN
+
+div_prep <- estimate_hill_diversity_by_size(
+  spec_data_prep   = spec_data_prep,
+  env_prep_size    = env_prep_size,
+  count_col        = count,           # in spec_data_prep
+  join_key         = "unit#size",     # col linking spec & env
+  group_key        = "unit#size"      # sample identifier
+)
+
+div_mod <- div_prep %>%
+  rename(`unit#size` = Assemblage) %>% 
+  left_join(env_prep_size ) %>% 
+  mutate(
+    treatment = factor(treatment, levels = c("control", "eco")),
+    site = as.factor(site),
+    #national_park = as.factor(national_park),
+    day = as.factor(day)
+  ) %>% 
+  filter(Order.q == 1) %>% 
+  mutate(yday = as.numeric(lubridate::yday(date))) %>% 
+  mutate(yday = as.character(yday),
+         yday = as.numeric(yday)) %>% 
+  #rename(temp_mean = mean_temp) %>% 
+  #filter(size == "k1") %>%
+  droplevels() %>% 
+      mutate(size = as.numeric(case_when(
+    size == "k1" ~ "0.1",
+    TRUE ~ size
+  ))) %>% 
+  rename(value = qD)
+
+# GAMMA
+
+mod_glmm <- glmmTMB(
+  value ~ treatment + 
+    (1 | site),
+  data = div_mod,
+  family = Gamma(link = "log")
+)
+
+summary(mod_glmm)
+
+full_glmm <- glmmTMB(
+  value ~ treatment +
+    temp_mean +
+    size +
+    temp_mean : treatment +
+    size : treatment +
+    size : temp_mean +
+    yday +
+    year +
+    (1 | site),
+  data = div_mod,
+  family = Gamma(link = "log")
+)
+
+
+library(MuMIn)
+options(na.action = "na.fail")
+# 3. Run dredge to get all possible submodels, ranked by AICc
+#dredge_res <- dredge(full_glmm,
+#                     rank     = "AICc",
+#                     trace    = TRUE,     # show progress
+#                     fixed    = NULL)     # no terms forced in all models
+
+# 4. Inspect the top models (delta AICc < 2)
+#top_models <- subset(dredge_res, delta < 2)
+#print(top_models)
+
+mod_glmm <- glmmTMB(
+  value ~ treatment +
+    temp_mean +
+    yday +
+    size +
+    #RR +
+    #treatment : national_park +
+    #hum_mean +
+    #temp_mean : hum_mean +
+    (1 |site),
+  data = div_mod,
+  family = Gamma(link = "log")
+)
+summary(mod_glmm)
+
+library(performance)
+check_collinearity(mod_glmm)
+
+best_mod <- mod_glmm
+
+
+# DHARMa residual checks
+res_glmm <- simulateResiduals(best_mod, n = 1000)
+plot(res_glmm)
+testResiduals(res_glmm)
+
+car::Anova(best_mod, type = "II") 
+summary(best_mod)
+```
+
+#### Plots
+
+**GLMM Overview Plots**
+
+<div class="plot-container">
+```{r fig.align='default', fig.show='hold'}
+library(dotwhisker)
+library(broom.mixed)
+library(ggeffects)    # or use emmeans::emmip
+library(ggplot2)
+
+# 1a) Using ggpredict
+pred <- ggpredict(best_mod, c("size", "treatment"))
+
+size_interaction_plot <- ggplot(pred, aes(x = x, y = predicted, colour = group)) +
+  geom_line(size = 1) +
+  geom_ribbon(aes(ymin = conf.low, ymax = conf.high, fill = group),
+              alpha = 0.3, colour = NA) +
+  scale_color_manual("treatment", values = treatment_palette) +
+  scale_fill_manual("treatment", values = treatment_palette) +
+  labs(
+    x     = "Arthropod Size (mm)",
+    y     = "Predicted Diversity (q = 1)"
+  ) +
+  theme_minimal(base_size = 18)
+
+print(size_interaction_plot)
+
+pred <- ggpredict(best_mod, c("temp_mean"))
+temperature_plot <- ggplot(pred, aes(x = x, y = predicted))+
+  geom_line(size = 1) +
+  geom_ribbon(aes(ymin = conf.low, ymax = conf.high),
+              alpha = 0.3, colour = NA) +
+  #scale_color_manual("treatment", values = treatment_palette) +
+  #scale_fill_manual("treatment", values = treatment_palette) +
+  scale_color_manual(values = "black")+
+  scale_fill_manual(values = "black")+
+  labs(
+    x     = "Mean Temperature (°C)",
+    y     = "Predicted Diversity (q = 1)"
+  ) +
+  theme(legend.position = "none")+
+  theme_minimal(base_size = 18)
+
+print(temperature_plot)
+
+# Using ggpredict
+pred <- ggpredict(best_mod, c("yday"))
+yday_plot <- ggplot(pred, aes(x = x, y = predicted)) +
+  geom_line(size = 1) +
+  geom_ribbon(aes(ymin = conf.low, ymax = conf.high),
+              alpha = 0.3, colour = NA) +
+  #scale_color_manual("treatment", values = treatment_palette) +
+  #scale_fill_manual("treatment", values = treatment_palette) +
+  scale_color_manual(values = "black")+
+  scale_fill_manual(values = "black")+
+  labs(
+    x     = "Day of Year",
+    y     = "Predicted Diversity (q = 1)"
+  ) +
+  theme(legend.position = "none")+
+  theme_minimal(base_size = 18)
+
+print(yday_plot)
+
+#summary(best_mod)
+
+
+# dw plot
+# 1) define your term → label map
+lookup <- c(
+  treatmenteco                   = "Treatment (eco)",
+  temp_mean                      = "Temperature (°C)",
+  size                           = "Arthropod Size (mm)",
+  yday                           = "Day of Year",
+  `size:treatmenteco`            = "Size x Treatment (eco)",
+  `SD (Intercept)`               = "Site-level SD (Intercept)"
+)
+
+# 2) build your dwplot
+coef_plot <- dwplot(best_mod, 
+                  conf.level   = 0.95, 
+                  vline        = geom_vline(xintercept = 0, linetype = "dashed")
+) +
+  scale_x_continuous("Log-scale estimate") +
+  # apply your custom labels:
+  scale_y_discrete(labels = lookup) +
+  #theme_bw(base_size = 13) +
+  scale_color_manual(values = "black") +
+  guides(color = "none") +
+  #ggtitle("Fixed-Effect Estimates")+
+  theme_minimal(base_size = 18)
+
+print(coef_plot)
+
+library(emmeans)
+library(MuMIn)
+# marginal means bar plot
+# Park × treatment EMMs
+emm2 <- emmeans(best_mod, ~ treatment, type = "response")
+
+df2  <- as.data.frame(emm2)
+
+emm_bar <- ggplot(df2, aes(x = treatment, y = response, fill = treatment)) +
+  geom_col(position = position_dodge(0.7), width = 0.6, alpha = 0.5) +
+  geom_errorbar(position = position_dodge(0.7),
+                aes(ymin = asymp.LCL, ymax = asymp.UCL), width = 0.2) +
+  scale_color_manual("treatment", values = treatment_palette) +
+  scale_fill_manual("treatment", values = treatment_palette) +
+  #facet_wrap(~ national_park) +
+  labs(y = "Predicted Diversity (q = 1)",
+       x = "treatment") +
+  scale_x_discrete(labels = c()) +
+  theme_minimal(base_size = 18)
+print(emm_bar)
+
+# random intercepts
+library(sjPlot)
+library(broom.mixed)
+
+re_df <- ranef(best_mod)$cond$site %>%
+  as.data.frame() %>%
+  rownames_to_column("site") %>%
+  rename(intercept = `(Intercept)`)
+
+re_plot <- ggplot(re_df, aes(x = reorder(site, intercept), y = intercept)) +
+  geom_point() +
+  coord_flip() +
+  labs(x = "Site",
+       y = "Random-Intercept Deviation") +
+  theme_minimal(base_size = 18)
+
+plot(re_plot)
+
+library(DHARMa)
+
+res <- simulateResiduals(best_mod, n = 500)
+plot(res)
+
+# 3) Plot sample‐coverage (“saturation”) curves
+coverage_plot <- global_plots$saturationcurves
+
+print(coverage_plot)
+
+```
+</div>
+
+> **Final Figure**
+
+<div class="plot-container">
+```{r fig.align='default', fig.show='hold', fig.height=15, fig.width=15, results=TRUE}
+library(patchwork)
+
+# 2) Build the two columns
+col1 <- coverage_plot / coef_plot / yday_plot / temperature_plot +
+  plot_layout(heights = c(1, 1, 1, 1))
+col2 <- size_interaction_plot / emm_bar +
+  plot_layout(heights = c(1, 1))
+
+# 3) Combine with correct parentheses so tags apply to all panels
+combined <- (col1 | col2) +
+  plot_annotation(
+    tag_levels = 'a',
+    tag_prefix = '(',
+    tag_suffix = ')'
+  ) & 
+  theme(
+    plot.tag          = element_text(face = "bold", size = 14),
+    plot.tag.position = c(0, 1)
+  )
+
+print(combined)
+
+file_out <- paste0("hedges_diversity_GLMM", formatted_date, ".png")
+ggsave(file_out, combined, width = 15, height = 15, dpi = 600)
+
+# this will print the filename into your HTML
+cat("✅ GLMM diversity figure saved as: ", file_out, "\n")
+
+```
+</div>
+
+#### Tables
+
+> **GLMM Summary Table**
+
+```{r, results=TRUE}
+# Required packages
+library(glmmTMB)       # for your model object and VarCorr()
+library(broom.mixed)    # for tidy()
+library(dplyr)          # for data‐wrangling
+library(performance)    # for r2_nakagawa()
+library(tibble)
+library(flextable)
+library(officer)
+
+# 0) Your fitted model
+summary(best_mod)
+model_all <- best_mod
+
+# 1) Term lookup for fixed effects
+lookup <- c(
+  treatmenteco                   = "Treatment (eco)",
+  temp_mean                      = "Temperature (°C)",
+  size                           = "Arthropod Size (mm)",
+  yday                           = "Day of Year",
+  `size:treatmenteco`            = "Size x Treatment (eco)",
+  `SD (Intercept)`               = "Site-level SD (Intercept)"
+)
+
+# 2) Extract fixed‐effect coefficients & relabel
+fixed_df <- tidy(model_all, effects = "fixed") %>%
+  dplyr::select(term, estimate, std.error, statistic, p.value) %>%
+  mutate(term = ifelse(term %in% names(lookup), lookup[term], term))
+
+# 3) Extract random‐effect variance & SD for 'site'
+# VarCorr(model_all)$cond$site is a 1×1 data.frame with the intercept variance
+vc_site <- VarCorr(model_all)$cond$site
+var_site <- vc_site[1, 1]                # the variance
+sd_site  <- sqrt(var_site)               # its SD
+
+random_df <- tibble(
+  term      = c("Variance (site intercept)", "Std.Dev. (site intercept)"),
+  estimate  = c(var_site, sd_site),
+  std.error = NA_real_,
+  statistic = NA_real_,
+  p.value   = NA_character_
+) %>% 
+  mutate(p.value = as.numeric(p.value))
+
+# 4) Compute overall fit statistics
+r2_vals <- r2_nakagawa(model_all)
+overall_df <- tibble(
+  term      = c("AIC", "BIC", "LogLik", "N", "R² marginal", "R² conditional"),
+  estimate  = c(
+    AIC(model_all),
+    BIC(model_all),
+    as.numeric(logLik(model_all)),
+    nobs(model_all),
+    r2_vals$R2_marginal,
+    r2_vals$R2_conditional
+  ),
+  std.error = NA_real_,
+  statistic = NA_real_,
+  p.value   = NA_real_
+)
+
+# 5) Combine, round, format & order
+summary_table <- bind_rows(fixed_df, random_df, overall_df) %>%
+  mutate_at(vars(estimate, std.error, statistic), ~ round(., 3)) %>%
+  mutate(p.value = case_when(
+    is.na(p.value)   ~ "",
+    p.value < 0.001  ~ "<0.001",
+    TRUE             ~ sprintf("%.3f", p.value)
+  )) %>%
+  mutate(term = factor(
+    term,
+    levels = c(fixed_df$term, random_df$term, overall_df$term)
+  )) %>%
+  arrange(term) %>%
+  rename(
+    Term      = term,
+    Estimate  = estimate,
+    `s.e.`    = std.error,
+    z         = statistic,
+    `p-value` = p.value
+  )
+
+# 6) Build flextable with caption above
+formatted_date <- format(Sys.Date(), "%Y%m%d")
+ft <- flextable(summary_table) %>%
+  set_caption(
+    caption = "Table 1. Diversity GLMM fixed effects, random‐effect parameters, and overall fit statistics",
+    autonum = run_autonum(
+      bkm      = FALSE,
+      seq_id   = "Table",
+      pre_label= "",
+      pos      = "before"
+    )
+  ) %>%
+  fontsize(size = 9, part = "all") %>%
+  autofit() %>%
+  align(align = "center", part = "all") %>%
+  border_remove() %>%
+  hline(part = "header", border = fp_border(color = "black", width = 1)) %>%
+  border_outer(border = fp_border(color = "black", width = 1.5)) %>%
+  bg(part = "header", bg = "#D9E1F2") %>%
+  bold(part = "header") %>%
+  italic(j = "p-value", part = "body")
+
+# 7) Create document and insert table
+doc <- read_docx() %>%
+  body_add_flextable(value = ft)
+
+# 8) Save to file
+print(doc, target = paste0("GLMM_summary_table_diversity_", formatted_date, ".docx"))
+
+file_out <- paste0("GLMM_summary_table_diversity_", formatted_date, ".docx")
+print(doc, target = file_out)
+
+# this will print the filename into your HTML
+cat("✅ GLMM diversity summary table saved as: ", file_out, "\n")
+
+```
+
+```{r, echo=TRUE, results = TRUE, message=FALSE, warning=FALSE}
+library(DT)
+summary_table %>%
+  datatable(extensions = 'Buttons',
+            options = list(dom = 'Blfrtip',
+                           buttons = c('copy', 'csv', 'excel', 'pdf', 'print'),
+                           lengthMenu = list(c(10,25,50,-1),
+                                             c(10,25,50,"All"))))
+```
+
+```{r, include=FALSE}
+write.csv(summary_table, "../output/tables/richness_summary_table.csv")
+testResiduals(res_glmm)
+summary(best_mod)
+```
+
+
+### 3.1.2 Abundance
+
+#### Section Summary
+
+We fitted a negative‐binomial GLMM with log link to total arthropod abundance per size fraction in hedgerow units (site × date), including size, temperature, treatment, and day of year as covariates, plus a random intercept for site. The final model showed good fit (AIC = 3621.9; BIC = 3653.1) and accounted for overdispersion (ϕ = 2.11).
+
+**Key fixed‐effect estimates (log‐scale ± SE, *z*, *p*):**
+
+* **Arthropod Size (mm)**: –0.569 ± 0.027, *z* = –20.97, *p* < 0.001
+  ⇨ ∼43 % increase in abundance per –1 mm (exp(–0.569) ≈ 0.566).
+* **Temperature (°C)**: 0.075 ± 0.015, *z* = 5.14, *p* < 0.001
+  ⇨ ∼7.8 % increase in abundance per +1 °C (exp(0.075) ≈ 1.078).
+* **Treatment (eco vs control)**: 0.470 ± 0.236, *z* = 1.995, *p* = 0.046
+  ⇨ ∼60 % higher baseline abundance in eco hedgerows (exp(0.470) ≈ 1.600).
+* **Day of Year**: –0.013 ± 0.002, *z* = –6.488, *p* < 0.001
+  ⇨ ∼1.3 % decline in abundance per day (exp(–0.013) ≈ 0.987).
+* **Size × Treatment (eco)**: –0.083 ± 0.039, *z* = –2.14, *p* = 0.032
+  ⇨ an additional ∼8 % increase per –1 mm in eco hedgerows (exp(–0.083) ≈ 0.920).
+
+**Post‐hoc comparisons (log‐scale ± SE, *z*, *p*):**
+
+* **Treatment (control vs eco)**: –0.251 ± 0.216, *z* = –1.16, *p* = 0.246
+  ⇨ no significant baseline difference between treatments.
+* **Size × Treatment slope diff (control vs eco)**: 0.083 ± 0.039, *z* = 2.14, *p* = 0.032
+  ⇨ steeper negative size–abundance slope in eco hedgerows.
+
+**Random‐effect variance (site intercept)** = 0.1104 (SD = 0.3323).
+**Dispersion parameter (nbinom2 ϕ)** = 2.11 — model accounts for extra‐Poisson variation.
+**DHARMa diagnostics**: no model violations detected.
+
+> **Ecological interpretation:**
+> Arthropod abundance is dominated by the smallest size fractions, with numbers increasing by ∼43 % for each 1 mm decrease in body length. Warmer temperatures boost overall abundance (\~8 % per °C), while abundance decreases seasonally (\~1.3 % per day). Although eco‐managed hedgerows showed a borderline higher baseline in the main model, the post‐hoc contrast was non‐significant, indicating baseline levels do not differ robustly. Crucially, the post‐hoc test confirms a significantly steeper size–abundance decline in eco hedgerows, highlighting that ecological treatments particularly favor small‐bodied taxa—perhaps via enhanced microhabitats or resource pulses—while larger arthropods are unaffected by this interaction.
+
+
+#### GLMM
+```{r, include=FALSE, results=FALSE, echo=FALSE}
+temp <- spec_data_prep %>% 
+  #full_join(env) %>% 
+  drop_na(count) %>% 
+  group_by(site_date, date, site, size) %>% 
+  summarise(value = sum(count))
+
+# GAUSSIAN
+abu_mod <- temp %>%
+  full_join(env_prep_size) %>% 
+    mutate(size = case_when(
+    size == "k1" ~ "0.1",
+    TRUE ~ size
+  )) %>% 
+mutate(size = as.numeric(size)) %>% 
+  rename(yday = day_of_year)
+  
+# nbiom2
+
+mod_glmm <- glmmTMB(
+  value ~ treatment + 
+    size +
+    (1 | site),
+  data = abu_mod,
+  family = nbinom2(link = "log")
+)
+
+summary(mod_glmm)
+summary(abu_mod$value)
+
+full_glmm <- glmmTMB(
+  value ~ treatment +
+    size +
+    temp_mean +
+    temp_mean : treatment +
+    treatment : size +
+    temp_mean : size +
+    #RR +
+    yday +
+    year +
+    (1 | site),
+  data = abu_mod,
+  family = nbinom2(link = "log")
+)
+
+summary(full_glmm)
+
+library(MuMIn)
+options(na.action = "na.fail")
+# 3. Run dredge to get all possible submodels, ranked by AICc
+#dredge_res <- dredge(full_glmm,
+#                     rank     = "AICc",
+#                     trace    = TRUE,     # show progress
+#                     fixed    = NULL)     # no terms forced in all models
+
+# 4. Inspect the top models (delta AICc < 2)
+#top_models <- subset(dredge_res, delta < 2)
+#print(top_models)
+
+mod_glmm <- glmmTMB(
+  value ~ 
+    size +
+    temp_mean+
+    treatment +
+    yday +
+    size:treatment +
+    (1 | site),
+  data = abu_mod,
+  family = nbinom2(link = "log")
+)
+summary(mod_glmm)
+
+library(performance)
+check_collinearity(mod_glmm)
+
+best_mod <- mod_glmm
+
+# 4. Post‐hoc pairwise comparisons with Tukey adjustment
+
+library(emmeans)
+library(MuMIn)
+## treatment
+summary(best_mod)
+hab_emm   <- emmeans(best_mod, ~ treatment)
+hab_pairs <- pairs(hab_emm, adjust = "tukey")
+print(hab_pairs)
+
+# DHARMa residual checks
+res_glmm <- simulateResiduals(best_mod, n = 1000)
+plot(res_glmm)
+
+car::Anova(best_mod, type = "II") 
+```
+
+#### Plots
+
+**GLMM Overview Plots**
+
+<div class="plot-container">
+```{r fig.align='default', fig.show='hold'}
+library(dotwhisker)
+library(broom.mixed)
+library(ggeffects)    # or use emmeans::emmip
+library(ggplot2)
+
+#summary(best_mod)
+pred <- ggpredict(best_mod, c("size [all]", "treatment"))
+
+size_interaction_plot <- ggplot(pred, aes(x = x, y = predicted, colour = group)) +
+  geom_line(size = 1) +
+  geom_ribbon(aes(ymin = conf.low, ymax = conf.high, fill = group),
+              alpha = 0.3, colour = NA) +
+  scale_color_manual("treatment", values = treatment_palette) +
+  scale_fill_manual("treatment", values = treatment_palette) +
+  labs(
+    x     = "Arthropod Size (mm)",
+    y     = "Predicted Arthropod Abundance"
+  ) +
+  theme_minimal(base_size = 18)
+
+print(size_interaction_plot)
+
+# 1a) Using ggpredict
+pred <- ggpredict(best_mod, c("temp_mean"))
+temperature_plot <- ggplot(pred, aes(x = x, y = predicted))+
+  geom_line(size = 1) +
+  geom_ribbon(aes(ymin = conf.low, ymax = conf.high),
+              alpha = 0.3, colour = NA) +
+  #scale_color_manual("treatment", values = treatment_palette) +
+  #scale_fill_manual("treatment", values = treatment_palette) +
+  scale_color_manual(values = "black")+
+  scale_fill_manual(values = "black")+
+  labs(
+    x     = "Mean Temperature (°C)",
+    y     = "Predicted Abundance"
+  ) +
+  theme(legend.position = "none")+
+  theme_minimal(base_size = 18)
+
+print(temperature_plot)
+
+# Using ggpredict
+pred <- ggpredict(best_mod, c("yday"))
+yday_plot <- ggplot(pred, aes(x = x, y = predicted)) +
+  geom_line(size = 1) +
+  geom_ribbon(aes(ymin = conf.low, ymax = conf.high),
+              alpha = 0.3, colour = NA) +
+  #scale_color_manual("treatment", values = treatment_palette) +
+  #scale_fill_manual("treatment", values = treatment_palette) +
+  scale_color_manual(values = "black")+
+  scale_fill_manual(values = "black")+
+  labs(
+    x     = "Day of Year",
+    y     = "Predicted Abundance"
+  ) +
+  theme(legend.position = "none")+
+  theme_minimal(base_size = 18)
+
+print(yday_plot)
+
+#summary(best_mod)
+
+
+# dw plot
+# 1) define your term → label map
+lookup <- c(
+  treatmenteco                   = "Treatment (eco)",
+  temp_mean                      = "Temperature (°C)",
+  size                           = "Arthropod Size (mm)",
+  yday                           = "Day of Year",
+  `size:treatmenteco`            = "Size x Treatment (eco)",
+  `SD (Intercept)`               = "Site-level SD (Intercept)"
+)
+
+# 2) build your dwplot
+coef_plot <- dwplot(best_mod, 
+                  conf.level   = 0.95, 
+                  vline        = geom_vline(xintercept = 0, linetype = "dashed")
+) +
+  scale_x_continuous("Log-Scale Estimate") +
+  # apply your custom labels:
+  scale_y_discrete(labels = lookup) +
+  #theme_bw(base_size = 13) +
+  scale_color_manual(values = "black") +
+  guides(color = "none") +
+  #ggtitle("Fixed-Effect Estimates")+
+  theme_minimal(base_size = 18)
+
+print(coef_plot)
+
+library(emmeans)
+library(MuMIn)
+# marginal means bar plot
+# Park × treatment EMMs
+#summary(best_mod)
+emm2 <- emmeans(best_mod, ~ treatment, type = "response")
+df2  <- as.data.frame(emm2)
+
+emm_bar <- ggplot(df2, aes(x = treatment, y = response, fill = treatment)) +
+  geom_col(position = position_dodge(0.7), width = 0.6, alpha = 0.5) +
+  geom_errorbar(position = position_dodge(0.7),
+                aes(ymin = asymp.LCL, ymax = asymp.UCL), width = 0.2) +
+  scale_color_manual("treatment", values = treatment_palette) +
+  scale_fill_manual("treatment", values = treatment_palette) +
+  #facet_wrap(~ national_park) +
+  labs(y = "Predicted Abundance",
+       x = "Treatment") +
+  scale_x_discrete(labels = c()) +
+  theme_minimal(base_size = 18)
+print(emm_bar)
+
+
+# random intercepts
+library(sjPlot)
+library(broom.mixed)
+
+re_df <- ranef(best_mod)$cond$site %>%
+  as.data.frame() %>%
+  rownames_to_column("site") %>%
+  rename(intercept = `(Intercept)`)
+
+re_plot <- ggplot(re_df, aes(x = reorder(site, intercept), y = intercept)) +
+  geom_point() +
+  coord_flip() +
+  labs(x = "Site",
+       y = "Random-Intercept Deviation") +
+  theme_minimal(base_size = 18)
+
+plot(re_plot)
+
+library(DHARMa)
+
+res <- simulateResiduals(best_mod, n = 500)
+plot(res)
+
+```
+</div>
+
+> **Final Figure for Arthropod Abundance**
+
+<div class="plot-container">
+```{r fig.align='default', fig.show='hold', fig.height=10, fig.width=13, results=TRUE}
+library(patchwork)
+
+# 2) Build the two columns
+col1 <- coef_plot / temperature_plot / yday_plot +
+  plot_layout(heights = c(2, 1, 1))
+col2 <-  size_interaction_plot / emm_bar +
+  plot_layout(heights = c(1, 1))
+
+# 3) Combine with correct parentheses so tags apply to all panels
+combined <- (col1 | col2) +
+  plot_annotation(
+    tag_levels = 'a',
+    tag_prefix = '(',
+    tag_suffix = ')'
+  ) & 
+  theme(
+    plot.tag          = element_text(face = "bold", size = 14),
+    plot.tag.position = c(0, 1)
+  )
+
+print(combined)
+file_out <- paste0("hedges_abundance_GLMM", formatted_date, ".png")
+ggsave(file_out, combined, width = 13, height = 10, dpi = 600)
+
+# this will print the filename into your HTML
+cat("✅ GLMM abundance figure saved as: ", file_out, "\n")
+```
+</div>
+
+#### Tables
+> **GLMM Summary Table**
+
+```{r, results=TRUE}
+# Required packages
+library(glmmTMB)       # for your model object and VarCorr()
+library(broom.mixed)    # for tidy()
+library(dplyr)          # for data‐wrangling
+library(performance)    # for r2_nakagawa()
+library(tibble)
+library(flextable)
+library(officer)
+
+# 0) Your fitted model
+summary(best_mod)
+model_all <- best_mod
+
+# 1) Term lookup for fixed effects
+lookup <- c(
+  treatmenteco                   = "Treatment (eco)",
+  temp_mean                      = "Temperature (°C)",
+  size                           = "Arthropod Size (mm)",
+  yday                           = "Day of Year",
+  `size:treatmenteco`            = "Size x Treatment (eco)",
+  `SD (Intercept)`               = "Site-level SD (Intercept)"
+)
+
+# 2) Extract fixed‐effect coefficients & relabel
+fixed_df <- tidy(model_all, effects = "fixed") %>%
+  dplyr::select(term, estimate, std.error, statistic, p.value) %>%
+  mutate(term = ifelse(term %in% names(lookup), lookup[term], term))
+
+# 3) Extract random‐effect variance & SD for 'site'
+# VarCorr(model_all)$cond$site is a 1×1 data.frame with the intercept variance
+vc_site <- VarCorr(model_all)$cond$site
+var_site <- vc_site[1, 1]                # the variance
+sd_site  <- sqrt(var_site)               # its SD
+
+random_df <- tibble(
+  term      = c("Variance (site intercept)", "Std.Dev. (site intercept)"),
+  estimate  = c(var_site, sd_site),
+  std.error = NA_real_,
+  statistic = NA_real_,
+  p.value   = NA_character_
+) %>% 
+  mutate(p.value = as.numeric(p.value))
+
+# 4) Compute overall fit statistics
+r2_vals <- r2_nakagawa(model_all)
+overall_df <- tibble(
+  term      = c("AIC", "BIC", "LogLik", "N", "R² marginal", "R² conditional"),
+  estimate  = c(
+    AIC(model_all),
+    BIC(model_all),
+    as.numeric(logLik(model_all)),
+    nobs(model_all),
+    r2_vals$R2_marginal,
+    r2_vals$R2_conditional
+  ),
+  std.error = NA_real_,
+  statistic = NA_real_,
+  p.value   = NA_real_
+)
+
+# 5) Combine, round, format & order
+summary_table <- bind_rows(fixed_df, random_df, overall_df) %>%
+  mutate_at(vars(estimate, std.error, statistic), ~ round(., 3)) %>%
+  mutate(p.value = case_when(
+    is.na(p.value)   ~ "",
+    p.value < 0.001  ~ "<0.001",
+    TRUE             ~ sprintf("%.3f", p.value)
+  )) %>%
+  mutate(term = factor(
+    term,
+    levels = c(fixed_df$term, random_df$term, overall_df$term)
+  )) %>%
+  arrange(term) %>%
+  rename(
+    Term      = term,
+    Estimate  = estimate,
+    `s.e.`    = std.error,
+    z         = statistic,
+    `p-value` = p.value
+  )
+
+# 6) Build flextable with caption above
+formatted_date <- format(Sys.Date(), "%Y%m%d")
+ft <- flextable(summary_table) %>%
+  set_caption(
+    caption = "Table 1. Abundance GLMM fixed effects, random‐effect parameters, and overall fit statistics",
+    autonum = run_autonum(
+      bkm      = FALSE,
+      seq_id   = "Table",
+      pre_label= ""
+    )
+  ) %>%
+  fontsize(size = 9, part = "all") %>%
+  autofit() %>%
+  align(align = "center", part = "all") %>%
+  border_remove() %>%
+  hline(part = "header", border = fp_border(color = "black", width = 1)) %>%
+  border_outer(border = fp_border(color = "black", width = 1.5)) %>%
+  bg(part = "header", bg = "#D9E1F2") %>%
+  bold(part = "header") %>%
+  italic(j = "p-value", part = "body")
+
+# 7) Create document and insert table
+doc <- read_docx() %>%
+  body_add_flextable(value = ft)
+
+# 8) Save to file
+print(doc, target = paste0("GLMM_summary_table_abundance_", formatted_date, ".docx"))
+
+file_out <- paste0("GLMM_summary_table_abundance_", formatted_date, ".docx")
+print(doc, target = file_out)
+
+# this will print the filename into your HTML
+cat("✅ GLMM abundance summary table saved as: ", file_out, "\n")
+
+```
+
+```{r, echo=TRUE, results = TRUE, message=FALSE, warning=FALSE}
+library(DT)
+summary_table %>%
+  datatable(extensions = 'Buttons',
+            options = list(dom = 'Blfrtip',
+                           buttons = c('copy', 'csv', 'excel', 'pdf', 'print'),
+                           lengthMenu = list(c(10,25,50,-1),
+                                             c(10,25,50,"All"))))
+```
+
+
+> **Post-Hoc Summary Table**
+
+```{r, results=TRUE}
+# Required packages
+library(emmeans)
+library(dplyr)
+library(purrr)
+library(flextable)
+library(officer)
+
+# 1. Compute all post-hoc tests and store in a named list
+posthoc_list <- list(
+  treatment = pairs( emmeans(best_mod, ~ treatment),           adjust = "tukey") %>% as.data.frame(),
+  #`National Park` = pairs( emmeans(best_mod, ~ national_park), adjust = "tukey") %>% as.data.frame()
+    `size × treatment slope diff` = pairs(
+      emtrends(best_mod, ~ treatment, var = "size")
+    ) %>% as.data.frame()
+)
+
+# 2. Bind into one table and clean it up
+combined_posthoc <- imap_dfr(posthoc_list, ~ 
+  .x %>%
+    mutate(Variable = .y)
+) %>%
+  rename(
+    Contrast = contrast,
+    Estimate = estimate,
+    s.e.     = SE,
+    z        = z.ratio,
+    p.value  = p.value
+  ) %>%
+  dplyr::select(Variable, Contrast, Estimate, s.e., z, p.value) %>%
+  mutate(
+    Estimate = round(Estimate, 3),
+    s.e.     = round(s.e., 3),
+    z        = round(z, 2),
+    p.value  = ifelse(p.value < 0.001, "<0.001", sprintf("%.3f", p.value))
+  )
+
+# 3. Create a flextable for Word/HTML export
+ft <- flextable(combined_posthoc) %>%
+  set_header_labels(
+    Variable = "Test",
+    Contrast = "Group contrast",
+    Estimate = "Estimate",
+    s.e.     = "SE",
+    z        = "z",
+    p.value  = "p-value"
+  ) %>%
+  autofit() %>%
+  fontsize(size = 9, part = "all") %>%
+  align(align = "center", part = "all") %>%
+  border_remove() %>%
+  hline(part = "header", border = fp_border(width = 1)) %>%
+  border_outer(border = fp_border(width = 1.5)) %>%
+  bg(part = "header", bg = "#D9E1F2") %>%
+  bold(part = "header") %>%
+  add_header_lines("Table X | Post-hoc pairwise contrasts for abundance GLMM")
+
+# 4. Write to Word
+doc <- read_docx() %>%
+  body_add_par("Post-hoc Pairwise Contrasts", style = "heading 2") %>%
+  body_add_flextable(ft) %>%
+  body_add_par("", style = "Normal")
+
+file_out <- paste0("posthoc_abundance_contrasts_", formatted_date, ".docx")
+print(doc, target = file_out)
+
+# this will print the filename into your HTML
+cat("✅ Post-hoc abundance contrasts table saved as: ", file_out, "\n")
+
+```
+
+```{r, echo=TRUE, results=TRUE, message=FALSE, warning=FALSE}
+library(DT)
+combined_posthoc %>%
+  datatable(extensions = 'Buttons',
+            options = list(dom = 'Blfrtip',
+                           buttons = c('copy', 'csv', 'excel', 'pdf', 'print'),
+                           lengthMenu = list(c(10,25,50,-1),
+                                             c(10,25,50,"All"))))
+```
+
+
+```{r}
+summary(best_mod)
+write.csv(summary_table, "../output/tables/abundance_summary_table.csv")
+write.csv(combined_posthoc, "../output/tables/abundance_posthoc.csv")
+
+```
+
+
+
+### 3.1.3 Biomass
+#### Section Summary
+
+We fitted a Gaussian‐family GLMM on log(biomass) in chicken outdoor enclosures, including `treatment`, `temperature`, `day of year`, and `size` as covariates, plus a random intercept for `site`. The final model showed good fit (AIC = 1000.7; BIC = 1027.7).
+
+**Key fixed‐effect estimates** (log‐scale ± SE, *z*, *p*):
+
+* **Temperature (°C)**: 0.092 ± 0.021, *z* = 4.50, *p* < 0.001
+  ⇨ ∼9.6 % increase in biomass per +1 °C (exp(0.092) ≈ 1.096).
+* **Day of Year**: –0.010 ± 0.003, *z* = –3.62, *p* = 0.0003
+  ⇨ ∼1.0 % decline in biomass per day (exp(–0.010) ≈ 0.990).
+* **Arthropod Size (mm)**: 0.251 ± 0.024, *z* = 10.41, *p* < 0.001
+  ⇨ ∼28.6 % increase in biomass per +1 mm (exp(0.251) ≈ 1.286).
+* **Treatment (eco vs control)**: 0.237 ± 0.220, *z* = 1.08, *p* = 0.281
+  ⇨ ∼26.7 % higher baseline biomass in eco enclosures (exp(0.237) ≈ 1.267), not significant.
+
+**Random‐effect variance** (site intercept) = 0.1014 (SD = 0.3184).
+**DHARMa diagnostics**: uniformity *p* = 0.88; dispersion *p* = 0.75; outlier test *p* = 0.504 — no serious model violations detected.
+
+> **Ecological interpretation:**
+> Warmer temperatures drive higher biomass (∼10 % per °C), and biomass declines modestly over the season (∼1 % per day). Larger size fractions dominate mass (∼29 % gain per mm), reflecting that fewer large-bodied individuals outweigh many small ones. Ecological treatment (eco vs control) does not significantly alter total biomass once abiotic and size‐structure effects are accounted for, indicating that size‐fraction and temperature are the primary determinants of biomass in these enclosures.
+
+#### GLMM
+```{r, include=FALSE, results=FALSE, echo=FALSE}
+library(dplyr)
+library(glmmTMB)
+library(DHARMa)
+library(performance)
+library(car)
+library(lubridate)
+# GAUSSIAN
+
+bm_mod <- biomass_prep %>%
+  dplyr::select(-location, -year) %>% 
+  full_join(env_prep, by = "zuordnung_id") %>% 
+  mutate(
+    treatment = factor(treatment, levels = c("control", "eco")),
+    site = as.factor(site),
+    #national_park = as.factor(national_park),
+    day = as.factor(day)
+  ) %>% 
+  #filter(order == 1) %>% 
+  mutate(yday = as.numeric(lubridate::yday(date))) %>% 
+  mutate(yday = as.character(yday),
+         yday = as.numeric(yday)) %>% 
+  #rename(temp_mean = mean_temp) %>% 
+  #filter(size == "k1") %>%
+  droplevels() %>% 
+      mutate(size = as.numeric(case_when(
+    size == "k1" ~ "0.1",
+    TRUE ~ size
+  ))) %>% 
+  mutate(value = biomass_size) %>% 
+  left_join(div_mod %>%  dplyr::select(zuordnung_id, size, value) %>% 
+              rename(div_value = value)) %>% 
+  left_join(abu_mod %>%  dplyr::select(zuordnung_id, size, value) %>% 
+              rename(count_value = value)) %>% 
+  filter(value > 0) %>% 
+  drop_na(count_value)
+
+# GAMMA
+
+mod_glmm <- glmmTMB(
+  value ~ treatment + 
+    (1 | site),
+  data = bm_mod,
+  family = Gamma(link = "log")
+)
+
+summary(mod_glmm)
+
+
+mod_glmm <- glmmTMB(
+  value ~ div_value + 
+    (1 | site),
+  data = bm_mod,
+  family = Gamma(link = "log")
+)
+
+summary(mod_glmm)
+
+
+full_glmm <- glmmTMB(
+  log(value) ~ treatment +
+    temp_mean +
+    size +
+    size : treatment +
+    #size : temp_mean +
+    yday +
+    #year +
+    #div_value +
+    #div_value : treatment +
+    #count_value +
+    #count_value : treatment +
+    #div_value : count_value +
+    (1 | site),
+  data = bm_mod,
+  family = gaussian
+)
+
+
+library(MuMIn)
+options(na.action = "na.fail")
+# 3. Run dredge to get all possible submodels, ranked by AICc
+#dredge_res <- dredge(full_glmm,
+#                     rank     = "AICc",
+#                     trace    = TRUE,     # show progress
+#                     fixed    = NULL)     # no terms forced in all models
+
+# 4. Inspect the top models (delta AICc < 2)
+#top_models <- subset(dredge_res, delta < 2)
+#print(top_models)
+
+mod_glmm <- glmmTMB(
+  log(value) ~ treatment +
+    temp_mean +
+    yday +
+    size +
+    #div_value +
+    #count_value +
+    #div_value : count_value +
+    #div_value : size +
+    #count_value : size +
+    (1 |site),
+  data = bm_mod,
+  family = gaussian
+)
+
+summary(mod_glmm)
+
+library(performance)
+check_collinearity(mod_glmm)
+
+best_mod <- mod_glmm
+
+
+# DHARMa residual checks
+res_glmm <- simulateResiduals(best_mod, n = 1000)
+plot(res_glmm)
+testResiduals(res_glmm)
+
+car::Anova(best_mod, type = "II") 
+summary(best_mod)
+```
+#### Plots
+**GLMM Overview Plots**
+
+<div class="plot-container">
+```{r fig.align='default', fig.show='hold'}
+library(dotwhisker)
+library(broom.mixed)
+library(ggeffects)    # or use emmeans::emmip
+
+
+#summary(best_mod)
+pred <- ggpredict(best_mod, c("size [all]", "treatment"))
+
+size_interaction_plot <- ggplot(pred, aes(x = x, y = predicted, colour = group)) +
+  geom_line(size = 1) +
+  geom_ribbon(aes(ymin = conf.low, ymax = conf.high, fill = group),
+              alpha = 0.3, colour = NA) +
+  scale_color_manual("treatment", values = treatment_palette) +
+  scale_fill_manual("treatment", values = treatment_palette) +
+  labs(
+    x     = "Arthropod Size (mm)",
+    y     = "Predicted Biomass"
+  ) +
+  theme_minimal(base_size = 18)
+
+print(size_interaction_plot)
+
+# 1a) Using ggpredict
+pred <- ggpredict(best_mod, c("temp_mean"))
+temperature_plot <- ggplot(pred, aes(x = x, y = predicted))+
+  geom_line(size = 1) +
+  geom_ribbon(aes(ymin = conf.low, ymax = conf.high),
+              alpha = 0.3, colour = NA) +
+  #scale_color_manual("treatment", values = treatment_palette) +
+  #scale_fill_manual("treatment", values = treatment_palette) +
+  scale_color_manual(values = "black")+
+  scale_fill_manual(values = "black")+
+  labs(
+    x     = "Mean Temperature (°C)",
+    y     = "Predicted Biomass"
+  ) +
+  theme(legend.position = "none")+
+  theme_minimal(base_size = 18)
+
+print(temperature_plot)
+
+# Using ggpredict
+pred <- ggpredict(best_mod, c("yday"))
+yday_plot <- ggplot(pred, aes(x = x, y = predicted)) +
+  geom_line(size = 1) +
+  geom_ribbon(aes(ymin = conf.low, ymax = conf.high),
+              alpha = 0.3, colour = NA) +
+  #scale_color_manual("treatment", values = treatment_palette) +
+  #scale_fill_manual("treatment", values = treatment_palette) +
+  scale_color_manual(values = "black")+
+  scale_fill_manual(values = "black")+
+  labs(
+    x     = "Day of Year",
+    y     = "Predicted Biomass"
+  ) +
+  theme(legend.position = "none")+
+  theme_minimal(base_size = 18)
+
+print(yday_plot)
+
+#summary(best_mod)
+
+
+# dw plot
+# 1) define your term → label map
+lookup <- c(
+  treatmenteco                   = "Treatment (eco)",
+  temp_mean                      = "Temperature (°C)",
+  size                           = "Arthropod Size (mm)",
+  yday                           = "Day of Year",
+  div_value                      = "Arthropod Diversity",
+  count_value                    = "Arthropod Abundance",
+  `SD (Intercept)`               = "Site-level SD (Intercept)"
+)
+
+# 2) build your dwplot
+coef_plot <- dwplot(best_mod, 
+                  conf.level   = 0.95, 
+                  vline        = geom_vline(xintercept = 0, linetype = "dashed")
+) +
+  scale_x_continuous("Log-Scale Estimate") +
+  # apply your custom labels:
+  scale_y_discrete(labels = lookup) +
+  #theme_bw(base_size = 13) +
+  scale_color_manual(values = "black") +
+  guides(color = "none") +
+  #ggtitle("Fixed-Effect Estimates")+
+  theme_minimal(base_size = 18)
+
+print(coef_plot)
+
+library(emmeans)
+library(MuMIn)
+# marginal means bar plot
+# Park × treatment EMMs
+#summary(best_mod)
+emm2 <- emmeans(best_mod, ~ treatment, type = "response")
+df2  <- as.data.frame(emm2)
+
+emm_bar <- ggplot(df2, aes(x = treatment, y = response, fill = treatment)) +
+  geom_col(position = position_dodge(0.7), width = 0.6, alpha = 0.5) +
+  geom_errorbar(position = position_dodge(0.7),
+                aes(ymin = lower.CL, ymax = upper.CL), width = 0.2) +
+  scale_color_manual("treatment", values = treatment_palette) +
+  scale_fill_manual("treatment", values = treatment_palette) +
+  #facet_wrap(~ national_park) +
+  labs(y = "Predicted Biomass",
+       x = "Treatment") +
+  scale_x_discrete(labels = c()) +
+  theme_minimal(base_size = 18)
+print(emm_bar)
+
+
+# random intercepts
+library(sjPlot)
+library(broom.mixed)
+
+re_df <- ranef(best_mod)$cond$site %>%
+  as.data.frame() %>%
+  rownames_to_column("site") %>%
+  rename(intercept = `(Intercept)`)
+
+re_plot <- ggplot(re_df, aes(x = reorder(site, intercept), y = intercept)) +
+  geom_point() +
+  coord_flip() +
+  labs(x = "Site",
+       y = "Random-Intercept Deviation") +
+  theme_minimal(base_size = 18)
+
+plot(re_plot)
+
+library(DHARMa)
+
+res <- simulateResiduals(best_mod, n = 500)
+plot(res)
+
+```
+</div>
+
+> **Final Figure for Arthropod Biomass**
+
+<div class="plot-container">
+```{r fig.align='default', fig.show='hold', fig.height=10, fig.width=13, results=TRUE}
+library(patchwork)
+
+# 2) Build the two columns
+col1 <- coef_plot / temperature_plot / yday_plot +
+  plot_layout(heights = c(2, 1, 1))
+col2 <-  size_interaction_plot / emm_bar +
+  plot_layout(heights = c(1, 1))
+
+# 3) Combine with correct parentheses so tags apply to all panels
+combined <- (col1 | col2) +
+  plot_annotation(
+    tag_levels = 'a',
+    tag_prefix = '(',
+    tag_suffix = ')'
+  ) & 
+  theme(
+    plot.tag          = element_text(face = "bold", size = 14),
+    plot.tag.position = c(0, 1)
+  )
+
+print(combined)
+file_out <- paste0("hedges_biomass_GLMM", formatted_date, ".png")
+ggsave(file_out, combined, width = 13, height = 10, dpi = 600)
+
+# this will print the filename into your HTML
+cat("✅ GLMM abundance figure saved as: ", file_out, "\n")
+```
+</div>
+
+#### Tables
+> **GLMM Summary Table**
+
+```{r, results=TRUE}
+# Required packages
+library(glmmTMB)       # for your model object and VarCorr()
+library(broom.mixed)    # for tidy()
+library(dplyr)          # for data‐wrangling
+library(performance)    # for r2_nakagawa()
+library(tibble)
+library(flextable)
+library(officer)
+
+# 0) Your fitted model
+summary(best_mod)
+model_all <- best_mod
+
+# 2) Extract fixed‐effect coefficients & relabel
+fixed_df <- tidy(model_all, effects = "fixed") %>%
+  dplyr::select(term, estimate, std.error, statistic, p.value) %>%
+  mutate(term = ifelse(term %in% names(lookup), lookup[term], term))
+
+# 3) Extract random‐effect variance & SD for 'site'
+# VarCorr(model_all)$cond$site is a 1×1 data.frame with the intercept variance
+vc_site <- VarCorr(model_all)$cond$site
+var_site <- vc_site[1, 1]                # the variance
+sd_site  <- sqrt(var_site)               # its SD
+
+random_df <- tibble(
+  term      = c("Variance (site intercept)", "Std.Dev. (site intercept)"),
+  estimate  = c(var_site, sd_site),
+  std.error = NA_real_,
+  statistic = NA_real_,
+  p.value   = NA_character_
+) %>% 
+  mutate(p.value = as.numeric(p.value))
+
+# 4) Compute overall fit statistics
+r2_vals <- r2_nakagawa(model_all)
+overall_df <- tibble(
+  term      = c("AIC", "BIC", "LogLik", "N", "R² marginal", "R² conditional"),
+  estimate  = c(
+    AIC(model_all),
+    BIC(model_all),
+    as.numeric(logLik(model_all)),
+    nobs(model_all),
+    r2_vals$R2_marginal,
+    r2_vals$R2_conditional
+  ),
+  std.error = NA_real_,
+  statistic = NA_real_,
+  p.value   = NA_real_
+)
+
+# 5) Combine, round, format & order
+summary_table <- bind_rows(fixed_df, random_df, overall_df) %>%
+  mutate_at(vars(estimate, std.error, statistic), ~ round(., 3)) %>%
+  mutate(p.value = case_when(
+    is.na(p.value)   ~ "",
+    p.value < 0.001  ~ "<0.001",
+    TRUE             ~ sprintf("%.3f", p.value)
+  )) %>%
+  mutate(term = factor(
+    term,
+    levels = c(fixed_df$term, random_df$term, overall_df$term)
+  )) %>%
+  arrange(term) %>%
+  rename(
+    Term      = term,
+    Estimate  = estimate,
+    `s.e.`    = std.error,
+    z         = statistic,
+    `p-value` = p.value
+  )
+
+# 6) Build flextable with caption above
+formatted_date <- format(Sys.Date(), "%Y%m%d")
+ft <- flextable(summary_table) %>%
+  set_caption(
+    caption = "Table 1. Biomass GLMM fixed effects, random‐effect parameters, and overall fit statistics",
+    autonum = run_autonum(
+      bkm      = FALSE,
+      seq_id   = "Table",
+      pre_label= ""
+    )
+  ) %>%
+  fontsize(size = 9, part = "all") %>%
+  autofit() %>%
+  align(align = "center", part = "all") %>%
+  border_remove() %>%
+  hline(part = "header", border = fp_border(color = "black", width = 1)) %>%
+  border_outer(border = fp_border(color = "black", width = 1.5)) %>%
+  bg(part = "header", bg = "#D9E1F2") %>%
+  bold(part = "header") %>%
+  italic(j = "p-value", part = "body")
+
+# 7) Create document and insert table
+doc <- read_docx() %>%
+  body_add_flextable(value = ft)
+
+# 8) Save to file
+print(doc, target = paste0("GLMM_summary_table_biomass_", formatted_date, ".docx"))
+
+file_out <- paste0("GLMM_summary_table_biomass_", formatted_date, ".docx")
+print(doc, target = file_out)
+
+# this will print the filename into your HTML
+cat("✅ GLMM biomass summary table saved as: ", file_out, "\n")
+
+```
+
+```{r, echo=TRUE, results = TRUE, message=FALSE, warning=FALSE}
+library(DT)
+summary_table %>%
+  datatable(extensions = 'Buttons',
+            options = list(dom = 'Blfrtip',
+                           buttons = c('copy', 'csv', 'excel', 'pdf', 'print'),
+                           lengthMenu = list(c(10,25,50,-1),
+                                             c(10,25,50,"All"))))
+```
+
+```{r}
+summary(best_mod)
+write.csv(summary_table, "../output/tables/biomass_summary_table.csv")
+testResiduals(res_glmm)
+
+```
+
+
+### 3.1.4 Community Composition
+
+#### Section Summary
+We performed a constrained analysis of principal coordinates (CAP) on Bray–Curtis distances to test the effect of treatment on arthropod community composition, followed by permutation‐based tests and β‐diversity partitioning.
+
+**Key ordination results (inertia, proportion explained):**
+
+* **Total inertia**: 10.4358
+* **Constrained inertia (CAP1)**: 0.2496 (2.392 % of total)
+* **Unconstrained inertia**: 10.1862 (97.608 % of total)
+
+**Key PERMANOVA results (Df, *R*², *F*, *p*):**
+
+* **treatment**: Df = 1, *R*² = 0.025, *F* = 1.70, *p* = 0.001
+* **temp\_mean**: Df = 1, *R*² = 0.056, *F* = 3.72, *p* = 0.001
+* **yday**: Df = 1, *R*² = 0.057, *F* = 3.84, *p* = 0.001
+* **year**: Df = 1, *R*² = 0.065, *F* = 4.37, *p* = 0.001
+
+**Treatment dispersion (PERMDISP):** *F* = 0.075, *p* = 0.785 — no heterogeneity of dispersion.
+
+**β‐Diversity partitioning (PERMANOVA *R*², *F*, *p*; PERMDISP *F*, *p*):**
+
+* **Total (βₛₒᵣ)**: *R*² = 0.029, *F* = 1.54, *p* = 0.045; dispersion *F* = 1.318, *p* = 0.256
+* **Turnover (βₛᵢₘ)**: *R*² = 0.015, *F* = 0.77, *p* = 0.710; dispersion *F* = 1.541, *p* = 0.220
+* **Nestedness (βₛₙₑ)**: *R*² = 0.063, *F* = 3.49, *p* = 0.081; dispersion *F* = 0.550, *p* = 0.462
+
+> **Ecological interpretation:**
+> Constrained ordination indicates that treatment explains only \~2.4 % of compositional variance (CAP1), yet PERMANOVA reveals significant structuring by treatment, temperature, season, and year (year having the largest partial *R*²), with homogeneous dispersion among treatment groups. β‐Diversity partitioning shows a small but significant overall treatment effect on total dissimilarity (p = 0.045), driven not by species turnover (non‐significant) but by nestedness (marginally non‐significant), suggesting that treatment alters community composition by subset losses or gains rather than wholesale species replacement.
+
+#### Models
+```{r, include=FALSE}
+library(vegan)
+library(GUniFrac)      # for UniFrac
+
+temp <- spec_matrix %>%
+  mutate(dummy = 1)
+  
+# 1) Compute a suite of candidate distance matrices
+dists <- list(
+  Bray     = vegdist(temp, method = "bray"),
+  Chao     = vegdist(temp, method = "chao"),
+  Jaccard  = vegdist((temp > 0)*1, method = "jaccard"),
+  Hellinger = dist(decostand(temp, "hellinger")),
+  Canberra = vegdist(temp, method = "canberra")
+  # if you have a tree:
+  # UniFrac_unw = UniFrac(phyloseq_obj, weighted=FALSE),
+  # UniFrac_w   = UniFrac(phyloseq_obj, weighted=TRUE)
+)
+
+# 2) For each metric, run NMDS and record stress
+nmds_results <- lapply(dists, function(d) {
+  metaMDS(d, k = 2, trymax = 200)
+})
+
+cap_results <- lapply(dists, function(d) {
+  capscale(d ~ treatment, data = env_prep)
+})
+
+ stress_df <- tibble(
+   Metric = names(nmds_results),
+   Stress = map_dbl(nmds_results, ~ .x$stress)
+ )
+print(stress_df)
+
+# 3) Visualize stress levels
+ggplot(stress_df, aes(x = Metric, y = Stress)) +
+  geom_col(fill = "steelblue") +
+  geom_hline(yintercept = 0.2, linetype = "dashed", color = "red") +
+  labs(title = "NMDS Stress by Distance Metric", y = "Stress", x = NULL) +
+  theme_minimal()
+
+# 4) Choose 2–3 metrics with lowest stress (< 0.2 ideally)
+chosen <- stress_df %>%
+  mutate(min_stress = min(Stress)) %>% 
+  filter(Stress == min_stress) %>%
+  pull(Metric)
+
+# 5) For each chosen metric, run PERMANOVA and test dispersion
+results <- lapply(chosen, function(m) {
+  dmat <- dists[[m]]
+  
+  # 5a) PERMANOVA
+  ad <- adonis2(dmat ~ treatment +
+                  temp_mean +
+                  #TX +
+                  yday, 
+        data = env_prep,
+        strata = env_prep$site,
+        by = "margin",
+        permutations = 999)
+  
+  # 5b) PERMDISP for main grouping (e.g. treatment)
+  disp <- betadisper(dmat, group = env_prep$treatment)
+  dd_h <- anova(disp)
+  
+  list(
+    metric     = m,
+    stress     = nmds_results[[m]]$stress,
+    permanova  = ad,
+    permdisp   = list(
+    treatment    = dd_h)
+  )
+})
+
+# 6) Summarize and compare results
+for (res in results) {
+  cat("✅ ### Metric:", res$metric, "\n")
+  cat("✅ - NMDS stress:", round(res$stress, 3), "\n")
+  cat("✅ #### PERMANOVA\n")
+  print(res$permanova)
+  cat("✅ #### PERMDISP (treatment)\n")
+  print(res$permdisp)
+  cat("✅ \n\n")
+}
+
+# 7) Final selection
+# Pick the metric that (a) has low stress, (b) shows a clear PERMANOVA effect
+# without significant PERMDISP, and (c) matches your ecological focus.
+cc_select <- list(
+  tests = results[1], 
+  ord_nmds   = nmds_results$Bray,
+  ord_cap = cap_results$Bray
+    )
+
+# 8) Betadiversity partitioning
+library(betapart)
+library(vegan)
+
+# assume `mat_numeric` is your site-by-species abundance matrix
+pa_mat  <- (temp > 0) * 1  
+beta_pa <- beta.pair(pa_mat, index.family = "sorensen")
+
+# beta_pa$beta.sor   = total dissimilarity
+# beta_pa$beta.sim   = turnover component
+# beta_pa$beta.sne   = nestedness component
+meta <- env_prep %>% dplyr::select(site, treatment)
+
+# total
+adonis2(beta_pa$beta.sor ~ treatment,
+        data        = meta,
+        permutations = 999)
+
+# turnover
+adonis2(beta_pa$beta.sim ~ treatment,
+        data        = meta,
+        permutations = 999)
+
+# nestedness
+adonis2(beta_pa$beta.sne ~ treatment,
+        data        = meta,
+        permutations = 999)
+
+bd_total <- betadisper(beta_pa$beta.sor, meta$treatment)
+anova(bd_total)
+
+bd_sim <- betadisper(beta_pa$beta.sim, meta$treatment)
+anova(bd_sim)
+
+bd_sne <- betadisper(beta_pa$beta.sne, meta$treatment)
+anova(bd_sne)
+```
+
+#### Plots
+
+```{r, include=FALSE}
+ord <- cc_select$ord_cap
+spiders <- gg_ordiplot(ord, groups = env_prep$treatment, 
+                       spiders=TRUE, ellipse=FALSE, plot=TRUE, pt.size = 5)$df_spiders %>%
+  rownames_to_column(var = "site_date") %>% 
+  arrange(site_date) %>% 
+  mutate(CAP1 = x, CAP2 = y, Cluster = as.factor(env_prep$treatment), treatment = as.factor(env_prep$treatment))
+
+# Create the base plot
+labs <- as.data.frame(t(gg_ordiplot(ord, groups = env_prep$treatment, 
+                                    spiders=TRUE, ellipse=FALSE, plot=TRUE, pt.size = 5)$plot$plot_env$axis.labels))
+
+library(ggsci)
+
+spiders$treatment  <- relevel(spiders$treatment , ref = "eco")
+
+
+ord_plot <- ggplot() +
+  labs(x = labs$V1, y = labs$V2) + 
+  geom_vline(xintercept = 0, lty=3, color="darkgrey") +
+  geom_hline(yintercept = 0, lty=3, color="darkgrey") +
+  theme(panel.grid = element_blank(), 
+        #legend.position = c(0.2,0.8),
+        axis.text.x = element_text(face = "bold", size = 14),
+        axis.text.y = element_text(face = "bold", size = 14)) +
+  theme_minimal(base_size = 18)+
+  #xlim(-0.75, 0.6) +
+  geom_segment(data = spiders, 
+               aes(x = cntr.x, y = cntr.y, xend = CAP1, yend = CAP2, color = treatment), 
+               size = 0.8, alpha = 0.5) +
+  geom_point(data = spiders, 
+             aes(x = CAP1, y = CAP2, shape = Cluster, color = treatment), 
+             size = 3, stroke = 2, alpha = 0.5) +
+  scale_color_manual(values = treatment_palette)+
+    guides(fill = "none") +  # hide fill legend if you prefer
+  labs(
+    title    = "Community Composition (NMDS)",
+    color    = "Treatment",
+    shape    = "Treatment"
+  )
+
+ef      <- envfit(ord, env_prep$temp_mean, permutations = 999)
+ef_df   <- as.data.frame(scores(ef, display = "vectors")) %>% 
+  rename (CAP2 = MDS1)
+ef_df$variable <- "Mean Temp"
+
+ef2      <- envfit(ord, env_prep$yday, permutations = 999)
+ef_df2   <- as.data.frame(scores(ef2, display = "vectors")) %>% 
+  rename (CAP2 = MDS1)
+ef_df2$variable <- "Day of Year"
+
+# Plot with white background, black‐outlined filled points, and a temp vector
+ord_plot <- ggplot() +
+  theme_bw(base_size = 18) +
+  labs(
+    x     = labs$V1,
+    y     = labs$V2,
+    #title = "Arthropod Community Composition (NMDS)",
+    color = "Treatment",
+    fill  = "Treatment",
+    shape = "Treatment"
+  ) +
+  geom_vline(xintercept = 0, linetype = "dashed", color = "darkgrey") +
+  geom_hline(yintercept = 0, linetype = "dashed", color = "darkgrey") +
+  theme(
+    panel.grid   = element_blank(),
+    axis.text.x  = element_text(face = "bold", size = 14),
+    axis.text.y  = element_text(face = "bold", size = 14)
+  ) +
+  # sample‐centroid segments
+  geom_segment(
+    data = spiders,
+    aes(x = cntr.x, y = cntr.y, xend = CAP1, yend = CAP2, color = treatment),
+    size = 1.5,
+    alpha = 0.8
+  ) +
+  # points with black outline and fill by treatment
+  geom_point(
+    data   = spiders,
+    aes(x = CAP1, y = CAP2, shape = Cluster, fill = treatment),
+    color  = "black",
+    size   = 6,
+    stroke = 1.1,
+    alpha = 0.8
+  ) +
+  
+  scale_color_manual(values = treatment_palette) +
+  scale_fill_manual(values = treatment_palette) +
+  scale_shape_manual(values = c(21, 22, 23)) +
+  guides(fill = "none")+
+  # environmental vector for temp_mean
+  geom_segment(
+    data  = ef_df,
+    aes(x = 0, y = 0, xend = 1*CAP1, yend = 1*CAP2),
+    arrow = arrow(length = unit(0.5, "cm")),
+    color = "black", size = 1.2
+  ) +
+  geom_text(
+    data = ef_df,
+    aes(x = 1.2 * CAP1, y = 1 * CAP2, label = variable),
+    color    = "black",
+    fontface = "italic",
+    hjust    = 1,
+    vjust    = -0.5,
+    size = 6
+  )+
+  # environmental vector for yday
+  geom_segment(
+    data  = ef_df2,
+    aes(x = 0, y = 0, xend = 1*CAP1, yend = 1*CAP2),
+    arrow = arrow(length = unit(0.5, "cm")),
+    color = "black", size = 1.2
+  ) +
+  geom_text(
+    data = ef_df2,
+    aes(x = 1.2 * CAP1, y = 1 * CAP2, label = variable),
+    color    = "black",
+    fontface = "italic",
+    hjust    = -0.5,
+    vjust    = -0.5,
+    size = 6
+  )
+
+ord_plot
+# Beta div partitioning
+# 1) Compute NMDS on total Bray–Curtis if not already done
+ord_tot <- capscale(beta_pa$beta.sor~1, data = env_prep)
+ord_sim <- capscale(beta_pa$beta.sim~1, data = env_prep)
+ord_sne <- capscale(beta_pa$beta.sne~1, data = env_prep)
+
+make_ord_plot <- function(ord, subtitle) {
+  
+  df <- as.data.frame(scores(ord, display="sites")) %>%
+    rownames_to_column("site_date") %>%
+    rename(PC1 = MDS1, PC2 = MDS2) %>%
+    left_join(env_prep, by="site_date")
+  
+  hulls <- df %>%
+   #dplyr::select(-site_date) %>% 
+   group_by(treatment) %>%
+   slice(chull(PC1, PC2))
+  
+  
+  ggplot(df, aes(PC1, PC2, color = treatment)) +
+    geom_point(    size   = 2,
+    stroke = 1.1,
+    alpha = 0.8,
+               aes(shape = treatment, fill = treatment),
+               color  = "black") +
+    geom_polygon(data = hulls, aes(fill = treatment, group = treatment),
+               alpha = 0.2, color = NA) +
+    scale_color_manual(values = treatment_palette) +
+    scale_fill_manual(values = treatment_palette)+
+    scale_shape_manual(values = c(21, 22, 23)) +
+    labs(title = subtitle, x = "Dim1", y = "Dim2") +
+    theme(legend.position = "none") +
+    theme_minimal(base_size = 18) 
+}
+
+p_tot   <- make_ord_plot(ord_tot, "Total (β sor)") + theme(legend.position = "none")
+p_turn  <- make_ord_plot(ord_sim, "Turnover (β sim)") + theme(legend.position = "none")
+p_nest  <- make_ord_plot(ord_sne, "Nestedness (β sne)") + theme(legend.position = "none")
+
+#cat("✅NMDS β-diversity hulls & component ordinations saved as:", out_file, "\n")
+
+```
+
+<div class="plot-container">
+```{r fig.align='default', fig.height=8, fig.show='hold', fig.width=18, results=TRUE}
+# print filename to the HTML
+# compose combined figure
+col1 <- ord_plot +
+  plot_layout(heights = c(1))
+col2 <-  (p_tot / p_turn / p_nest) +
+  plot_layout(heights = c(1, 1, 1))
+
+# Combine with correct parentheses so tags apply to all panels
+ord_combined <- (col1 | col2) +
+  plot_layout(widths = c(2, 1))+
+  plot_annotation(
+    tag_levels = 'a',
+    tag_prefix = '(',
+    tag_suffix = ')'
+  ) & 
+  theme(
+    plot.tag          = element_text(face = "bold", size = 14),
+    plot.tag.position = c(0, 1)
+  )
+
+print(ord_combined)
+out_file <- sprintf("hedges_CAP_betadiv_hulls_and_components_%s.svg", formatted_date)
+
+ggsave(out_file, ord_combined, width = 16, height = 10, dpi = 600)
+cat("✅CAP β-diversity hulls & component ordinations saved as:", out_file, "\n")
+
+```
+</div>
+
+#### Tables
+
+**Community composition differences **
+```{r}
+# Assuming you already have your PERMANOVA results in `tidy_result`,
+# which is a data.frame with columns: term, Df, SumOfSqs, R2, F, Pr(>F)
+
+#PERMANOVA
+library(flextable)
+library(officer)
+permanova_result <- cc_select$tests[[1]]$permanova %>% 
+  rownames_to_column(var = "Term") %>% 
+    mutate(
+    SumOfSqs   = round(SumOfSqs, 3),
+    R2         = round(R2, 3),
+    `F`        = round(`F`, 2),
+    `Pr(>F)`   = ifelse(`Pr(>F)` < 0.001, "<0.001", sprintf("%.3f", `Pr(>F)`))
+  ) %>% 
+  rename(
+    #term       = "Term",
+    #Df         = "df",
+    "Sum of Squares"   = SumOfSqs,
+    "R²"       = R2,
+     "F-value"      = `F` ,
+    "p-value" = `Pr(>F)`
+  )
+
+# 1) Build flextable
+ft_perm <- flextable(permanova_result) %>%
+  autofit() %>%
+  fontsize(size = 9, part = "all") %>%
+  align(align = "center", part = "all") %>%
+  border_remove() %>%
+  hline(part = "header", border = fp_border(width = 1)) %>%
+  border_outer(border = fp_border(width = 1.5)) %>%
+  bg(part = "header", bg = "#D9E1F2") %>%
+  bold(part = "header")
+
+# 2) Export to Word
+doc_perm <- read_docx() %>%
+  body_add_par("Table X | Results of a PERMANOVA on Bray–Curtis distance matrix of community composition", style = "heading 2") %>%
+  body_add_flextable(ft_perm) %>%
+  body_add_par("", style = "Normal")
+
+# 3) Write file
+file_out <- paste0("PERMANOVA_results_", formatted_date, ".docx")
+print(doc_perm, target = file_out)
+
+# 4) Inform in the RMarkdown / console
+cat(sprintf("✅ PERMANOVA results table saved as: %s\n", file_out))
+
+# PERMDISP
+permdisp_result <- cc_select$tests[[1]]$permdisp$treatment %>% 
+    rownames_to_column(var = "Term") %>% 
+    mutate(
+    `Sum Sq`   = round(`Sum Sq`, 3),
+    `Mean Sq`         = round(`Mean Sq`, 3),
+    `F value`        = round(`F value`, 3),
+    `Pr(>F)`   = ifelse(`Pr(>F)` < 0.001, "<0.001", sprintf("%.3f", `Pr(>F)`))
+  ) %>% 
+  rename(
+    #term       = "Term",
+    #Df         = "df",
+    "Sum of Squares"   = `Sum Sq`,
+    "Mean Square"       = `Mean Sq`,
+     "F-value"      = `F value` ,
+    "p-value" = `Pr(>F)`
+  ) %>% 
+  mutate(Term = "treatment")
+
+ft_disp <- flextable(permdisp_result) %>%
+  autofit() %>%
+  fontsize(size = 9, part = "all") %>%
+  align(align = "center", part = "all") %>%
+  border_remove() %>%
+  hline(part = "header", border = fp_border(width = 1)) %>%
+  border_outer(border = fp_border(width = 1.5)) %>%
+  bg(part = "header", bg = "#D9E1F2") %>%
+  bold(part = "header")
+
+# 2) Export to Word
+doc_disp <- read_docx() %>%
+  body_add_par("Table X | Results of a PERMDISP by treatment on Bray–Curtis distance matrix of community composition", style = "heading 2") %>%
+  body_add_flextable(ft_disp) %>%
+  body_add_par("", style = "Normal")
+
+# 3) Write file
+file_out <- paste0("PERMDISP_results_", formatted_date, ".docx")
+print(doc_disp, target = file_out)
+
+# 4) Inform in the RMarkdown / console
+cat(sprintf("✅ PERMDISP results table saved as: %s\n", file_out))
+```
+
+
+```{r, echo=TRUE, results=TRUE, message=FALSE, warning=FALSE}
+
+library(DT)
+
+cat(sprintf("✅ PERMANOVA results table"))
+permanova_result %>%
+  datatable(extensions = 'Buttons',
+            options = list(dom = 'Blfrtip',
+                           buttons = c('copy', 'csv', 'excel', 'pdf', 'print'),
+                           lengthMenu = list(c(10,25,50,-1),
+                                             c(10,25,50,"All"))))
+
+cat(sprintf("✅ PERMDISP results table"))
+permdisp_result %>%
+  datatable(extensions = 'Buttons',
+            options = list(dom = 'Blfrtip',
+                           buttons = c('copy', 'csv', 'excel', 'pdf', 'print'),
+                           lengthMenu = list(c(10,25,50,-1),
+                                             c(10,25,50,"All"))))
+```
+
+**Beta diversity partitioning**
+```{r}
+# BETA DIVERSITY
+
+# 1) Define metrics and human‐readable names
+metrics      <- c("beta.sor", "beta.sim", "beta.sne")
+metric_names <- c("Total", "Turnover", "Nestedness")
+
+# 2) Run and combine all PERMANOVAs
+permanova_list <- purrr::map(metrics, ~ adonis2(
+  formula      = beta_pa[[.x]] ~ treatment,
+  data         = meta,
+  permutations = 999,
+  strata       = meta$location
+))
+
+beta_permanova_result <- purrr::map2_df(permanova_list, metric_names, function(mod, metric) {
+  as.data.frame(mod) %>%
+    tibble::rownames_to_column("Term") %>%
+    dplyr::mutate(Metric = metric) %>%
+    dplyr::select(Metric, Term, Df, SumOfSqs, R2, F, `Pr(>F)`)
+}) %>%
+  dplyr::rename(
+    "Sum of Squares" = SumOfSqs,
+    "R²"             = R2,
+    "F-value"        = F,
+    "p-value"        = `Pr(>F)`
+  ) %>%
+  dplyr::mutate(
+    `Sum of Squares` = round(`Sum of Squares`, 3),
+    `R²`               = round(`R²`, 3),
+    `F-value`        = round(`F-value`, 2),
+    `p-value`        = ifelse(`p-value` < 0.001, "<0.001", sprintf("%.3f", `p-value`))
+  )
+
+# 3) Build and export PERMANOVA flextable
+ft_perm <- flextable::flextable(beta_permanova_result) %>%
+  flextable::autofit() %>%
+  flextable::fontsize(size = 9, part = "all") %>%
+  flextable::align(align = "center", part = "all") %>%
+  flextable::border_remove() %>%
+  flextable::hline(part = "header", border = officer::fp_border(width = 1)) %>%
+  flextable::border_outer(border = officer::fp_border(width = 1.5)) %>%
+  flextable::bg(part = "header", bg = "#D9E1F2") %>%
+  flextable::bold(part = "header")
+
+doc_perm <- read_docx() %>%
+  body_add_par(
+    "Table X | PERMANOVA results by treatment for each beta‐diversity component",
+    style = "heading 2"
+  ) %>%
+  body_add_flextable(ft_perm) %>%
+  body_add_par("", style = "Normal")
+
+perm_file <- paste0("Betadiv_PERMANOVA_results_", formatted_date, ".docx")
+print(doc_perm, target = perm_file)
+cat(sprintf("✅ Betadiversity PERMANOVA results table saved as: %s\n", perm_file))
+
+# 4) Run and combine all PERMDISP tests
+permdisp_hab <- purrr::map2_df(metrics, metric_names, function(m, metric) {
+  a <- betadisper(beta_pa[[m]], meta$treatment) %>% anova() %>% as.data.frame()
+  a[1, ] %>%
+    tibble::rownames_to_column("Term") %>%
+    dplyr::mutate(
+      Metric = metric,
+      Group  = "treatment"
+    )
+})
+
+
+beta_permdisp_result <- dplyr::bind_rows(permdisp_hab) %>%
+  dplyr::select(Metric, Group, Term, Df, `Sum Sq`, `Mean Sq`, `F value`, `Pr(>F)`) %>%
+  dplyr::rename(
+    "Sum of Squares" = `Sum Sq`,
+    "Mean Square"    = `Mean Sq`,
+    "F-value"        = `F value`,
+    "p-value"        = `Pr(>F)`
+  ) %>%
+  dplyr::mutate(
+    `Sum of Squares` = round(`Sum of Squares`, 3),
+    `Mean Square`    = round(`Mean Square`, 3),
+    `F-value`        = round(`F-value`, 3),
+    `p-value`        = ifelse(`p-value` < 0.001, "<0.001", sprintf("%.3f", `p-value`))
+  )
+
+# 5) Build and export PERMDISP flextable
+ft_disp <- flextable::flextable(beta_permdisp_result) %>%
+  flextable::autofit() %>%
+  flextable::fontsize(size = 9, part = "all") %>%
+  flextable::align(align = "center", part = "all") %>%
+  flextable::border_remove() %>%
+  flextable::hline(part = "header", border = officer::fp_border(width = 1)) %>%
+  flextable::border_outer(border = officer::fp_border(width = 1.5)) %>%
+  flextable::bg(part = "header", bg = "#D9E1F2") %>%
+  flextable::bold(part = "header")
+
+doc_disp <- officer::read_docx() %>%
+  body_add_par(
+    "Table X | PERMDISP results by treatment for each beta‐diversity component",
+    style = "heading 2"
+  ) %>%
+  body_add_flextable(ft_disp) %>%
+  body_add_par("", style = "Normal")
+
+disp_file <- paste0("Betadiv_PERMDISP_results_", formatted_date, ".docx")
+print(doc_disp, target = disp_file)
+cat(sprintf("✅ Betadiversity PERMDISP results table saved as: %s\n", disp_file))
+```
+
+```{r, echo=TRUE, results=TRUE, message=FALSE, warning=FALSE}
+
+library(DT)
+
+cat(sprintf("✅ PERMANOVA results table"))
+permanova_result %>%
+  datatable(extensions = 'Buttons',
+            options = list(dom = 'Blfrtip',
+                           buttons = c('copy', 'csv', 'excel', 'pdf', 'print'),
+                           lengthMenu = list(c(10,25,50,-1),
+                                             c(10,25,50,"All"))))
+
+cat(sprintf("✅ PERMDISP results table"))
+permdisp_result %>%
+  datatable(extensions = 'Buttons',
+            options = list(dom = 'Blfrtip',
+                           buttons = c('copy', 'csv', 'excel', 'pdf', 'print'),
+                           lengthMenu = list(c(10,25,50,-1),
+                                             c(10,25,50,"All"))))
+```
+
+
+```{r include=FALSE}
+summary(cc_select$ord_cap)
+write.csv(permanova_result, "../output/tables/permanova_result.csv")
+write.csv(permdisp_result, "../output/tables/permdisp_result.csv")
+
+write.csv(beta_permanova_result, "../output/tables/beta_permanova_result.csv")
+write.csv(beta_permdisp_result, "../output/tables/beta_permdisp_result.csv")
+```
+
+
+### 3.1.5 Indicator Species
+
+#### Section Summary
+
+We performed a species indicator analysis (IndVal.g) to identify taxa significantly associated with eco vs control treatments, excluding species occurring in < 5 % of sites, using 999 permutations.
+
+**Key indicator taxa (Indicator value):**
+
+* **Halictidae#2**: eco, 0.748
+* **Halictidae#3**: eco, 0.708
+* **Coleoptera#2**: eco, 0.678
+* **Anthomyiidae#2**: eco, 0.651
+* **Sepsidae#2**: eco, 0.632
+* **Halictidae#1.5**: eco, 0.624
+* **Syrphidae#1.5**: eco, 0.612
+* **Apidae#5**: eco, 0.592
+* **Cicadellidae#1.5**: eco, 0.590
+* **Calliphoridae#2**: eco, 0.499
+* **Oedemeridae#3**: eco, 0.459
+* **Tenthredinidae#1.5**: eco, 0.430
+
+**Permutation settings and filtering:** 999 permutations; taxa present in ≥ 5 % of sites; significance threshold *p* < 0.05.
+
+> **Ecological interpretation:**
+> All significant indicators are tied to the eco treatment—especially sweat bees (Halictidae), hoverflies (Syrphidae), and other pollinators (Apidae), alongside saprophagous Diptera (Anthomyiidae, Sepsidae). High IndVal scores (up to 0.75) for halictid bees underscore that eco hedgerows provide enhanced floral resources and nesting substrates, while the presence of saprophages suggests increased organic substrates under ecological management. This suite of taxa highlights that eco treatments foster pollinator and detritivore communities absent or less abundant in control hedgerows, stregnthening the interpretation that nestedness accounts for the significant community differnces among treatments and control sites hence represent impoverished communities of those found in eco.
+
+#### Calculations
+```{r, include=FALSE}
+library(indicspecies)
+library(permute)   # for how()
+
+# 1. Drop very rare species (<5% of sites)
+
+# count how many sites each species occurs in:
+n_sites    <- nrow(spec_matrix)
+presence_n <- spec_matrix %>%
+  summarise(across(everything(), ~ sum(. > 0))) %>%
+  pivot_longer(everything(),
+               names_to  = "species_id",
+               values_to = "n_present")
+
+keep_spp <- presence_n %>%
+  filter(n_present >= 0.05 * n_sites) %>%
+  pull(species_id)
+
+# 2. Build one df with env + filtered species 
+
+# species data
+spec_df <- spec_matrix %>%
+  as.data.frame() %>%
+  rownames_to_column("site_date") %>%
+  dplyr::select(site_date, all_of(keep_spp))
+
+# env data (must have site_date, treatment, national_park)
+env_df  <- env_prep %>% dplyr::select(site_date, treatment)
+
+# joined
+df2 <- env_df %>%
+  left_join(spec_df, by = "site_date")
+
+# 3. Prepare objects for indicator tests
+
+Y_hab   <- df2 %>% dplyr::select(all_of(keep_spp)) %>% as.matrix()
+grp_hab <- df2$treatment
+#blk_hab <- df2$national_park   # block parks when testing treatment
+
+# 4. multipatt for treatment 
+
+set.seed(123)
+
+hab_ind <- multipatt(
+  Y_hab,
+  grp_hab,
+  func    = "IndVal.g",
+  control = how(nperm = 999)
+)
+summary(hab_ind)
+hab_sign <- as.data.frame(hab_ind$sign)
+
+hab_tab <- hab_sign %>%
+  as_tibble(rownames = "species_id") %>%
+  #dplyr::select(species_id, contains("s."), p.value) %>%
+  mutate(indicator = case_when(
+    s.eco == "1" & s.control == "0" ~ "eco",
+    s.eco == "1" & s.control == "1" ~ "eco + control",
+    s.eco == "0" & s.control == "1" ~ "control",
+    TRUE ~ NA
+  )) %>% 
+  #dplyr::select(species_id, p.value, indicator) %>% 
+  #mutate(
+  #  adj.p         = round(p.adjust(p.value, method = "BH"), 3)
+  #) #%>%
+  filter(p.value < 0.1) %>%
+  dplyr::select(species_id, indicator, IndVal = stat, p.value) %>%
+  mutate(Test = "treatment")
+
+
+# 6. Combine results 
+
+indicator_all <- hab_tab %>%
+  dplyr::select(Test, species_id, indicator, IndVal, p.value) %>% 
+  rename(species_name = species_id)
+
+# final
+print(indicator_all)
+
+write.csv(indicator_all, "../output/tables/indicator_species.csv")
+
+indicator_all %>% 
+  separate(species_name, c("taxon", "size"), sep = "#") %>% 
+  ungroup() %>% 
+  summarise(size_mean = mean(as.numeric(size)))
+
+```
+
+#### Tables
+
+```{r}
+# Assuming you already have your PERMANOVA results in `tidy_result`,
+# which is a data.frame with columns: term, Df, SumOfSqs, R2, F, Pr(>F)
+
+library(flextable)
+library(officer)
+
+# Prepare the data frame for display
+indval_table <- hab_sign %>%
+  as_tibble(rownames = "species_id") %>%
+  #dplyr::select(species_id, contains("s."), p.value) %>%
+  mutate(indicator = case_when(
+    s.eco == "1" & s.control == "0" ~ "eco",
+    #s.eco == "1" & s.control == "1" ~ "disturbed + undisturbed",
+    s.eco == "0" & s.control == "1" ~ "control",
+    TRUE ~ NA
+  )) %>% 
+  #dplyr::select(species_id, p.value, indicator) %>% 
+  #filter(adj.p < 0.05) %>%
+  dplyr::select(species_id, indicator, IndVal = stat, p.value) %>%
+  mutate(Test = "treatment") %>% 
+  dplyr::select(Test, species_id, indicator, IndVal, p.value) %>% 
+  rename(species_name = species_id) %>% 
+  distinct() %>% 
+  #indicator_df %>%
+  # round IndVal, format p-value
+  mutate(
+    IndVal   = round(IndVal, 3),
+    `p-value` = ifelse(p.value <= 0.001, "<0.001", sprintf("%.3f", p.value))
+  ) %>%
+  dplyr::select(
+    Test,
+    species_name,
+    indicator,
+    IndVal,
+    `p-value`
+  ) %>%
+  rename(
+    `Test`           = Test,
+    `Species`        = species_name,
+    `Group`          = indicator,
+    `Indicator value`= IndVal,
+    `p-value` = `p-value`
+  ) %>% 
+  arrange(Test, Group) %>% 
+  drop_na(`p-value`) %>% 
+    mutate(Group = case_when(
+    Group == "control" ~ "Control",
+    Group == "eco" ~ "Eco",
+    TRUE ~ Group
+  )) 
+
+# 2) Build flextable
+ft_indval <- flextable(indval_table) %>%
+  set_header_labels(
+    Test             = "Analysis",
+    Species          = "Species",
+    Group            = "Indicator group",
+    `Indicator value`= "IndVal",
+    `p-value`        = "p-value"
+  ) %>%
+  colformat_double(j = "Indicator value", digits = 3) %>%
+  #colformat_char(j = "Adj. p-value") %>%
+  autofit() %>%
+  fontsize(size = 9, part = "all") %>%
+  align(align = "center", part = "all") %>%
+  border_remove() %>%
+  hline(part = "header", border = fp_border(width = 1)) %>%
+  border_outer(border = fp_border(width = 1.5)) %>%
+  bg(part = "header", bg = "#D9E1F2") %>%
+  bold(part = "header")
+
+# 3) Export to Word
+out_doc <- read_docx() %>%
+  body_add_par("Table X | Indicator species analysis (IndVal) results", style = "heading 2") %>%
+  body_add_flextable(ft_indval) %>%
+  body_add_par("", style = "Normal")
+
+out_file <- paste0("IndVal_results_", formatted_date, ".docx")
+```
+
+
+```{r, echo=TRUE, results=TRUE, message=FALSE, warning=FALSE}
+
+library(DT)
+print(out_doc, target = out_file)
+
+# 4) Inform in the console / RMarkdown
+cat(sprintf("✅ Indicator results table saved as: %s\n", out_file))
+
+indval_table %>%
+  datatable(extensions = 'Buttons',
+            options = list(dom = 'Blfrtip',
+                           buttons = c('copy', 'csv', 'excel', 'pdf', 'print'),
+                           lengthMenu = list(c(10,25,50,-1),
+                                             c(10,25,50,"All"))))
+
+```
+
+
+```{r, results=TRUE}
+summary(hab_ind)
+```
+
+
+### 3.1.6 Big Picture Plot
+```{r}
+library(glmmTMB)
+
+   div_model  <- glmmTMB(value ~ treatment + temp_mean + yday + size + (1 | site),
+                         data = div_mod, family = Gamma(link="log"))
+   abu_model  <- glmmTMB(value ~ size + temp_mean + treatment + yday + size:treatment + (1 | site),
+                         data = abu_mod, family = nbinom2(link="log"))
+   bio_model  <- glmmTMB(log(value) ~ treatment + temp_mean + yday + size + (1 | site),
+                        data = bm_mod, family = gaussian())
+   
+mod_data <- bm_mod %>% 
+  rename(biomass_value = value)
+
+biomass_model_with_div_abun <- glmmTMB(
+  div_value ~ treatment +
+    temp_mean +
+    yday +
+    #size +
+    count_value +
+    biomass_value +
+    #div_value : count_value +
+    #div_value : size +
+    #count_value : size +
+    (1 |site),
+  data = mod_data,
+  family = Gamma(link = "log")
+)
+summary(biomass_model_with_div_abun)
+
+
+# 1a) Create a prediction grid
+abun_seq <- seq(
+  from = min(mod_data$count_value, na.rm = TRUE),
+  to   = max(mod_data$count_value, na.rm = TRUE),
+  length.out = 200
+)
+bm_seq <- seq(
+  from = min(mod_data$biomass_value, na.rm = TRUE),
+  to   = max(mod_data$biomass_value, na.rm = TRUE),
+  length.out = 200
+)
+
+grid <- expand.grid(
+  count_value = abun_seq,
+  biomass_value   = bm_seq,
+  size        = mean(mod_data$size, na.rm = TRUE),
+  temp_mean   = mean(mod_data$temp_mean, na.rm = TRUE),
+  yday        = mean(mod_data$yday, na.rm = TRUE),
+  treatment   = "eco",       # or "control"; facet if desired
+  site        = NA           # placeholder, not used in prediction
+)
+
+# 1b) Predict on log‐biomass, then back‐transform
+grid$log_pred <- predict(biomass_model_with_div_abun, newdata = grid, type = "link")
+grid <- grid %>%
+  mutate(
+    div_pred = exp(log_pred)
+  )
+
+library(metR)
+# 1c) Plot heatmap with contour lines
+heatmap_plot <- ggplot(grid, aes(x = count_value, y = biomass_value, fill = div_pred)) +
+  geom_raster(interpolate = TRUE) +
+  geom_contour(aes(z = div_pred), 
+                 #breaks = contour_breaks, 
+                 size = 0.5,
+                 color = "white",
+                 alpha = 0.5,
+                 #bins = 15,
+                 binwidth = 2.5) +
+    # Add contour labels at defined probability steps
+  metR::geom_text_contour(aes(z = div_pred), 
+                            breaks = c(5, 10, 15, 20, 25),
+                            
+                            stroke = 0.2, check_overlap = TRUE,
+                            color = "black", size = 4) + #model_colors[[g]]
+  scale_fill_viridis(
+    name = "Predicted\nDiversity",
+    option = "viridis"
+  ) +
+  geom_contour(
+    aes(z = div_pred),
+    color = "white",
+    alpha = 0.5,
+    bins = 10
+  ) +
+  labs(
+    x = "Abundance",
+    y = "Biomass"
+  ) +
+  theme_minimal(base_size = 18)+
+  theme(legend.position = "bottom")
+
+print(heatmap_plot)
+
+
+
+```
+
+```{r}
+#summary(best_mod)
+library(ggeffects)
+pred <- ggpredict(div_model, c("size [all]", "treatment"))
+
+div_size_interaction_plot <- ggplot(pred, aes(x = x, y = predicted, colour = group)) +
+  geom_line(size = 1) +
+  geom_ribbon(aes(ymin = conf.low, ymax = conf.high, fill = group),
+              alpha = 0.3, colour = NA) +
+  scale_color_manual("Treatment", values = treatment_palette) +
+  scale_fill_manual("Treatment", values = treatment_palette) +
+  labs(
+    x     = "Arthropod Size",
+    y     = "Predicted Diversity"
+  ) +
+  theme_minimal(base_size = 18)+
+  theme(legend.position = "none")
+
+print(div_size_interaction_plot)
+
+
+
+pred <- ggpredict(bio_model, c("size [all]", "treatment"))
+
+bm_size_interaction_plot <- ggplot(pred, aes(x = x, y = predicted, colour = group)) +
+  geom_line(size = 1) +
+  geom_ribbon(aes(ymin = conf.low, ymax = conf.high, fill = group),
+              alpha = 0.3, colour = NA) +
+  scale_color_manual("Treatment", values = treatment_palette) +
+  scale_fill_manual("Treatment", values = treatment_palette) +
+  labs(
+    x     = "Arthropod Size",
+    y     = "Predicted Biomass"
+  ) +
+  theme_minimal(base_size = 18)+
+  theme(legend.position = "none")
+
+print(bm_size_interaction_plot)
+
+pred <- ggpredict(abu_model, c("size [all]", "treatment"))
+
+abu_size_interaction_plot <- ggplot(pred, aes(x = x, y = predicted, colour = group)) +
+  geom_line(size = 1) +
+  geom_ribbon(aes(ymin = conf.low, ymax = conf.high, fill = group),
+              alpha = 0.3, colour = NA) +
+  scale_color_manual("Treatment", values = treatment_palette) +
+  scale_fill_manual("Treatment", values = treatment_palette) +
+  labs(
+    x     = "Arthropod Size",
+    y     = "Predicted Abundance"
+  ) +
+  theme_minimal(base_size = 18)+
+  theme(legend.position = "bottom")
+
+print(abu_size_interaction_plot)
+
+# Combine side by side with equal widths
+size_combined_plot <- div_size_interaction_plot + abu_size_interaction_plot + bm_size_interaction_plot +
+  plot_layout(ncol = 3, widths = c(1, 1, 1))
+
+print(size_combined_plot)
+```
+
+```{r}
+library(glmmTMB)
+
+# 1) Define representative “size” values for each bin
+size_map <- tibble(
+  size_bin = c("Small (<2 mm)", "Medium (2–5 mm)", "Large (>5 mm)"),
+  size     = c(1.0, 3.5, 7.0)
+)
+
+# 2) Create a sequence of days of year spanning the observed range
+yday_seq <- seq(
+  from = min(bm_mod$yday, na.rm = TRUE),
+  to   = max(bm_mod$yday, na.rm = TRUE),
+  length.out = 100
+)
+
+# 3) Determine the overall mean temperature and pick one treatment level (“control”)
+mean_temp       <- mean(bm_mod$temp_mean, na.rm = TRUE)
+treatment_level <- "control"
+
+# 4) Build prediction grids for each response
+
+# 4a) Diversity predictions
+div_newdata <- expand.grid(
+  yday      = yday_seq,
+  size      = size_map$size,
+  treatment = treatment_level,
+  temp_mean = mean_temp,
+  site      = NA
+) %>%
+  left_join(size_map, by = "size") %>%
+  mutate(size_bin = size_bin)
+
+# 4b) Abundance predictions
+abu_newdata <- expand.grid(
+  yday      = yday_seq,
+  size      = size_map$size,
+  treatment = treatment_level,
+  temp_mean = mean_temp,
+  site      = NA
+) %>%
+  left_join(size_map, by = "size") %>%
+  mutate(size_bin = size_bin)
+
+# 4c) Biomass predictions
+bio_newdata <- expand.grid(
+  yday      = yday_seq,
+  size      = size_map$size,
+  treatment = treatment_level,
+  temp_mean = mean_temp,
+  site      = NA
+) %>%
+  left_join(size_map, by = "size") %>%
+  mutate(size_bin = size_bin)
+
+# 5) Generate predicted values with standard errors (link scale)
+
+# 5a) Diversity (Gamma log link)
+div_pred <- predict(
+  div_model,
+  newdata = div_newdata,
+  type    = "link",
+  se.fit  = TRUE,
+  re.form = NA
+)
+div_newdata <- div_newdata %>%
+  mutate(
+    link_pred = div_pred$fit,
+    se_link   = div_pred$se.fit,
+    lower_link = link_pred - 1.96 * se_link,
+    upper_link = link_pred + 1.96 * se_link,
+    pred_div   = exp(link_pred),
+    lower_div  = exp(lower_link),
+    upper_div  = exp(upper_link)
+  )
+
+# 5b) Abundance (NB log link)
+abu_pred <- predict(
+  abu_model,
+  newdata = abu_newdata,
+  type    = "link",
+  se.fit  = TRUE,
+  re.form = NA
+)
+abu_newdata <- abu_newdata %>%
+  mutate(
+    link_pred  = abu_pred$fit,
+    se_link    = abu_pred$se.fit,
+    lower_link = link_pred - 1.96 * se_link,
+    upper_link = link_pred + 1.96 * se_link,
+    pred_abu   = exp(link_pred),
+    lower_abu  = exp(lower_link),
+    upper_abu  = exp(upper_link)
+  )
+
+# 5c) Biomass (Gaussian on log(value))
+bio_pred <- predict(
+  bio_model,
+  newdata = bio_newdata,
+  type    = "response",
+  se.fit  = TRUE,
+  re.form = NA
+)
+bio_newdata <- bio_newdata %>%
+  mutate(
+    log_pred     = bio_pred$fit,
+    se_log       = bio_pred$se.fit,
+    lower_log    = log_pred - 1.96 * se_log,
+    upper_log    = log_pred + 1.96 * se_log,
+    pred_bio     = exp(log_pred),
+    lower_bio    = exp(lower_log),
+    upper_bio    = exp(upper_log)
+  )
+
+# 6) Plot seasonal trajectories with ribbons for 95% CI
+
+# 6a) Diversity time series by size bin
+div_ts_plot_mod <- ggplot(div_newdata, aes(x = yday, y = pred_div, color = size_bin, fill = size_bin)) +
+  geom_ribbon(aes(ymin = lower_div, ymax = upper_div), alpha = 0.3, color = NA) +
+  geom_line(size = 1) +
+  scale_color_viridis_d( name = "Arthropod Size") +
+  scale_fill_viridis_d(name = "Arthropod Size") +
+  labs(
+    x     = "Day of Year",
+    y     = "Predicted Diversity"
+  ) +
+  theme_minimal(base_size = 18)+
+  theme(legend.position = "none")
+
+print(div_ts_plot_mod)
+
+# 6b) Abundance time series by size bin (log scale)
+abu_ts_plot_mod <- ggplot(abu_newdata, aes(x = yday, y = pred_abu, color = size_bin, fill = size_bin)) +
+  geom_ribbon(aes(ymin = lower_abu, ymax = upper_abu), alpha = 0.3, color = NA) +
+  geom_line(size = 1) +
+  #scale_y_log10() +
+  scale_color_viridis_d( name = "Arthropod Size") +
+  scale_fill_viridis_d(name = "Arthropod Size") +
+  labs(
+    x     = "Day of Year",
+    y     = "Predicted Abundance"
+  ) +
+  theme_minimal(base_size = 18) +
+  theme(legend.position = "bottom")
+
+print(abu_ts_plot_mod)
+
+# 6c) Biomass time series by size bin (original scale)
+bio_ts_plot_mod <- ggplot(bio_newdata, aes(x = yday, y = pred_bio, color = size_bin, fill = size_bin)) +
+  geom_ribbon(aes(ymin = lower_bio, ymax = upper_bio), alpha = 0.3, color = NA) +
+  geom_line(size = 1) +
+  scale_color_viridis_d( name = "Arthropod Size") +
+  scale_fill_viridis_d(name = "Arthropod Size") +
+  labs(
+    x     = "Day of Year",
+    y     = "Predicted Biomass"
+  ) +
+  theme_minimal(base_size = 18) +
+  theme(legend.position = "none")
+
+print(bio_ts_plot_mod)
+
+library(patchwork)
+
+# bio_ts_plot_mod keeps its default legend
+
+# Combine side by side with equal widths
+day_combined_plot <- div_ts_plot_mod + abu_ts_plot_mod + bio_ts_plot_mod +
+  plot_layout(ncol = 3, widths = c(1, 1, 1))
+
+print(day_combined_plot)
+```
+
+> **Final Big Picture Figure for Paper**
+
+<div class="plot-container">
+```{r fig.align='default', fig.show='hold', fig.height=20, fig.width=18, results=TRUE}
+library(patchwork)
+
+
+# 1) Read PNG into a rasterGrob
+png_path <- "path_fig_20250819.png"
+img       <- png::readPNG(png_path)
+path_grob <- grid::rasterGrob(img, interpolate = TRUE)
+
+# 2) First row: size plot twice as wide, heatmap one share
+row1 <- (size_combined_plot  | heatmap_plot) +
+  plot_layout(widths = c(2, 1))
+
+# 3) Second row: day plot and the path diagram grob, equal widths
+row2 <- (day_combined_plot  | wrap_elements(full = path_grob)) +
+  plot_layout(widths = c(1.25, 1))
+
+# 4) Stack rows and add tags
+big_combined <- (row1 / row2) +
+  plot_layout(heights = c(1, 1))+
+  plot_annotation(
+    tag_levels  = 'a',
+    tag_prefix  = '(',
+    tag_suffix  = ')'
+  ) &
+  theme(
+    plot.tag          = element_text(face = "bold", size = 16),
+    plot.tag.position = c(0, 1)
+  )
+
+print(big_combined)
+
+file_out <- paste0("hedges_big_picture", formatted_date, ".svg")
+ggsave(file_out, big_combined, width = 18, height = 14, dpi = 600)
+
+# this will print the filename into your HTML
+cat("✅ Big picture figure saved as: ", file_out, "\n")
+```
+</div>
+
+## 3.2 AI Model Performance
+
+```{r}
+
+taxa_model_summary_tbl <- taxa_summary_prep %>%
+group_by(rank) %>%
+  summarise(
+    n_models                   = n(),
+    
+    # Confidence
+    mean_confidence            = mean(average_confidence, na.rm = TRUE),
+    sd_confidence              = sd(average_confidence, na.rm = TRUE),
+    min_confidence             = min(average_confidence, na.rm = TRUE),
+    max_confidence             = max(average_confidence, na.rm = TRUE),
+    
+    # Accuracy without threshold
+    mean_acc_no_thresh         = mean(accuracy_without_threshold, na.rm = TRUE),
+    sd_acc_no_thresh           = sd(accuracy_without_threshold, na.rm = TRUE),
+    min_acc_no_thresh          = min(accuracy_without_threshold, na.rm = TRUE),
+    max_acc_no_thresh          = max(accuracy_without_threshold, na.rm = TRUE),
+    pct_acc_no_thresh_95       = mean(accuracy_without_threshold >= 95, na.rm = TRUE) * 100,
+    
+    # Accuracy with threshold
+    mean_acc_with_thresh       = mean(accuracy_with_threshold, na.rm = TRUE),
+    sd_acc_with_thresh         = sd(accuracy_with_threshold, na.rm = TRUE),
+    min_acc_with_thresh        = min(accuracy_with_threshold, na.rm = TRUE),
+    max_acc_with_thresh        = max(accuracy_with_threshold, na.rm = TRUE),
+    pct_acc_with_thresh_95     = mean(accuracy_with_threshold >= 95, na.rm = TRUE) * 100
+  ) %>%
+  ungroup()
+
+glimpse(taxa_model_summary_tbl)
+write.csv(taxa_model_summary_tbl, "../output/tables/taxa_model_summary.csv")
+
+library(openxlsx)
+write.xlsx(taxa_model_summary_tbl, file = paste0("../output/tables/model_summary_performance_", formatted_date, ".xlsx"))
+```
+
+
+```{r fig.height=8, fig.width=10}
+library(ggpubr)
+glimpse(taxa_summary_prep)
+# 1) Reshape to long format
+taxa_long <- taxa_summary_prep %>%
+  dplyr::select(rank,
+         accuracy_without_threshold,
+         accuracy_with_threshold,
+         average_confidence) %>%
+  mutate(average_confidence = average_confidence*100) %>% 
+  pivot_longer(
+    cols      = c(accuracy_without_threshold,
+                  accuracy_with_threshold,
+                  average_confidence),
+    names_to  = "metric",
+    values_to = "value"
+  ) %>%
+  mutate(
+    metric = factor(
+      metric,
+      levels = c("accuracy_without_threshold",
+                 "accuracy_with_threshold",
+                 "average_confidence"),
+      labels = c("Accuracy\n(w/o Threshold)",
+                 "Accuracy\n(w Threshold)",
+                 "Avg\nConfidence")
+    )
+  )
+
+# 2) Violin + boxplot, faceted by rank
+model_perform <- ggplot(taxa_long, aes(x = metric, y = value, fill = metric)) +
+  geom_violin(alpha = 0.6, scale = "width") +
+  geom_boxplot(width = 0.5, outlier.shape = NA, color = "black") +
+  facet_wrap(~ rank, scales = "free_y") +
+  scale_fill_viridis_d(
+    option    = "E",
+    direction = -1,
+    name      = "Metric"
+  ) +
+  labs(
+    x     = NULL,
+    y     = "Performance (%)"
+  ) +
+  theme_minimal(base_size = 16) +
+  theme(
+    axis.text.x = element_text(angle = 45, hjust = 1),
+    legend.position = "bottom"
+  )+
+  scale_y_log10()
+model_perform
+
+```
+
+```{r fig.height=8, fig.width=10}
+
+# B1. Taxon-level improvement
+taxa_thresh_scatt <- taxa_summary_prep %>%
+  mutate(accuracy_change = case_when(
+    accuracy_with_threshold > accuracy_without_threshold ~ "Improved",
+    accuracy_with_threshold == accuracy_without_threshold ~ "No Change",
+    accuracy_with_threshold < accuracy_without_threshold ~ "Reduced",
+    FALSE ~ "NA"
+  )) %>% 
+  filter(!accuracy_with_threshold == "0") %>% 
+  ggplot(aes(x = accuracy_without_threshold, y = accuracy_with_threshold,
+             fill = accuracy_change)) +
+  geom_abline(slope = 1, intercept = 0, linetype = "dashed", color = "grey50") +
+  #geom_point(alpha = 0.8, size = 4) +
+  geom_jitter(width = 1, height = 0, size = 3, stroke = 1, shape = 21) +
+  scale_fill_viridis_d(option = "C", name = "Accuracy Change", direction = -1) +
+  #scale_size_continuous(name = "Test Count", range = c(1, 5)) +
+  coord_cartesian(xlim = c(60, 100), ylim = c(60, 100)) +
+  labs(x = "Accuracy w/o Threshold (%)", y = "Accuracy w/ Threshold (%)") +
+  theme_minimal(base_size = 16) +
+  facet_wrap( ~ rank) +
+  theme(
+    legend.position = "bottom")
+
+taxa_thresh_scatt
+
+
+# 1) Create the “improved” column
+taxa_for_bar <- taxa_summary_prep %>%
+  mutate(
+    improved = ifelse(
+      accuracy_with_threshold > accuracy_without_threshold,
+      "Improved",
+      "No Change"
+    ) %>% 
+    factor(levels = c("No Change", "Improved"))
+  )
+
+# 2) Use ggbarstats with the unquoted column name `improved`
+taxa_thresh_bar <- ggbarstats(
+  data             = taxa_for_bar,
+  x                = improved,
+  y                = rank,
+  results.subtitle = FALSE,
+  ggtheme          = theme_minimal(base_size = 16),
+  legend.title = "Accuracy Change"
+) +
+  scale_fill_viridis_d(option = "C", name = "Accuracy Change", direction = -1) +
+  labs(
+    x     = "Rank",
+    y     = "Percentage of Taxa"
+  ) +
+  theme(
+    legend.position = "bottom")
+
+print(taxa_thresh_bar)
+```
+
+```{r fig.height=8, fig.width=10}
+# E1. Taxon-level confidence by binned train_taxon_count
+taxa_conf_bin <- taxa_summary_prep %>%
+  mutate(train_bin = cut(train_taxon_count, breaks = c(0, 20, 50, 200, Inf), labels = c("0-20", "21-50", "51-200", ">200"))) %>% #
+  ggplot(aes(x = train_bin, y = average_confidence * 100 , fill = train_bin)) +
+  geom_violin(alpha = 0.7, scale = "width") +
+  geom_jitter(width = 0.15, size = 1.5, color = "green") +
+  #scale_color_manual(values = c("FALSE" = "red", "TRUE" = "green"), name = "≥95% Acc") +
+  scale_fill_viridis_d(name = "Train Bin", option = "G") +
+  labs(x = "Train Taxon Count Bin", y = "Average Confidence (%)") +
+  theme_minimal(base_size = 16) +
+  theme(legend.position = "top") +
+  facet_wrap( ~ rank, scales = "free_x")
+
+taxa_conf_bin
+
+vline_95 <- taxa_summary_prep %>%
+  filter(average_confidence < 0.95) %>%
+  dplyr::summarize(
+    xint = max(train_taxon_count, na.rm = TRUE) +1
+  )
+
+vline_90 <- taxa_summary_prep %>%
+  filter(average_confidence < 0.90) %>%
+  dplyr::summarize(
+    xint = max(train_taxon_count, na.rm = TRUE) +1
+  )
+
+# Scatter + GAM regression of average confidence vs. training size
+taxa_conf_scatter <- ggplot(taxa_summary_prep, 
+                            aes(x = train_taxon_count, 
+                                y = average_confidence * 100)) +
+  geom_point(aes(fill= rank),alpha = 0.6, size = 4, stroke = 1, color = "black", shape = 21) +
+  scale_fill_viridis_d(name = "Taxa Rank", option = "C")+
+  geom_smooth(method = "gam", 
+              formula = y ~ log(x), 
+              color = "black", 
+              fill  = "grey70", 
+              se    = TRUE) +
+  geom_vline(
+    data      = vline_90,
+    aes(xintercept = xint),
+    linetype = "dashed",
+    color    = "black",
+    size     = 0.8
+  )+
+    geom_vline(
+    data      = vline_95,
+    aes(xintercept = xint),
+    linetype = "dashed",
+    color    = "black",
+    size     = 0.8
+  )+
+    # add labels next to those lines
+  geom_text(
+    data = vline_90,
+    aes(x = xint, y = 0.5, label = "90%"),
+    angle   = 90,
+    vjust   = -0.5,
+    hjust   = 0,
+    size    = 5,
+    color   = "black"
+  ) +
+  geom_text(
+    data = vline_95,
+    aes(x = xint, y = 0.5, label = "95%"),
+    angle   = 90,
+    vjust   = -0.5,
+    hjust   = 0,
+    size    = 5,
+    color   = "black"
+  )+
+  labs(
+    x     = "Training Images per Taxon",
+    y     = "Average Confidence (%)"
+  ) +
+  theme_minimal(base_size = 16)+
+  scale_x_log10()
+  #facet_wrap( ~ rank, scales = "free_x")
+
+#summary(taxa_summary_prep$train_taxon_count)
+print(taxa_conf_scatter)
+
+taxa_accu_bin <- taxa_summary_prep %>%
+  mutate(train_bin = cut(train_taxon_count, breaks = c(0, 20, 50, 200, Inf), labels = c("0-20", "21-50", "51-200", ">200"))) %>% #
+  ggplot(aes(x = train_bin, y = accuracy_without_threshold, fill = train_bin)) +
+  geom_violin(alpha = 0.7, scale = "width") +
+  geom_jitter(width = 0.15, size = 1.5, color = "green") +
+  #scale_color_manual(values = c("FALSE" = "red", "TRUE" = "green"), name = "≥95% Acc") +
+  scale_fill_viridis_d(name = "Train Bin", option = "G") +
+  labs(x = "Train Taxon Count Bin", y = "Accuracy w/o Threshold (%)") +
+  theme_minimal(base_size = 16) +
+  theme(legend.position = "top") +
+  facet_wrap( ~ rank, scales = "free_x")+
+  theme(
+    legend.position = "bottom")
+
+taxa_accu_bin
+
+vline_95 <- taxa_summary_prep %>%
+  filter(accuracy_without_threshold < 95) %>%
+  dplyr::summarize(
+    xint = max(train_taxon_count, na.rm = TRUE) + 1
+  )
+
+vline_90 <- taxa_summary_prep %>%
+  filter(accuracy_without_threshold < 90) %>%
+  dplyr::summarize(
+    xint = max(train_taxon_count, na.rm = TRUE) + 1
+  )
+
+str(taxa_summary_prep)
+
+taxa_accu_scatter <- ggplot(taxa_summary_prep, 
+                            aes(x = train_taxon_count, 
+                                y = accuracy_without_threshold)) +
+  geom_point(aes(fill= rank),alpha = 0.6, size = 4, stroke = 1, color = "black", shape = 21) +
+  scale_fill_viridis_d(name = "Taxa Rank", option = "C")+
+  geom_smooth(method = "gam", 
+              formula = y ~ log(x), 
+              color = "black", 
+              fill  = "grey70", 
+              se    = TRUE) +
+  geom_vline(
+    data      = vline_90,
+    aes(xintercept = xint),
+    linetype = "dashed",
+    color    = "black",
+    size     = 0.8
+  )+
+    geom_vline(
+    data      = vline_95,
+    aes(xintercept = xint),
+    linetype = "dashed",
+    color    = "black",
+    size     = 0.8
+  )+
+    # add labels next to those lines
+  geom_text(
+    data = vline_90,
+    aes(x = xint, y = 0.5, label = "90%"),
+    angle   = 90,
+    vjust   = -0.5,
+    hjust   = 0,
+    size    = 5,
+    color   = "black"
+  ) +
+  geom_text(
+    data = vline_95,
+    aes(x = xint, y = 0.5, label = "95%"),
+    angle   = 90,
+    vjust   = -0.5,
+    hjust   = 0,
+    size    = 5,
+    color   = "black"
+  )+
+  labs(
+    x     = "Training Images per Taxon",
+    y     = "Accuracy w/o Threshold (%)"
+  ) +
+  theme_minimal(base_size = 16)+
+  scale_x_log10()+
+  theme(
+    legend.position = "bottom")
+  #facet_wrap( ~ rank, scales = "free_x")
+
+#summary(taxa_summary_prep$train_taxon_count)
+print(taxa_accu_scatter)
+
+spearman_res <- cor.test(
+  ~ train_taxon_count + accuracy_without_threshold,
+  data   = taxa_summary_prep,
+  method = "spearman",
+  exact  = FALSE
+)
+
+# Print the test
+print(spearman_res)
+```
+
+```{r fig.height=8, fig.width=10}
+temp <- taxa_summary_prep %>% 
+  filter(objects_without_determination > 2) %>% 
+  dplyr::select(
+    model, test_count,
+    correct_classifications, incorrect_classifications,
+    correct_classifications_with_threshold,
+    incorrect_classifications_with_threshold,
+    objects_without_determination
+  ) %>% 
+  pivot_longer(
+    cols     = 3:last_col(),
+    names_to = "status",
+    values_to= "count"
+  ) %>% 
+  uncount(count) %>% 
+  rename(taxa = model) %>% 
+  mutate(
+    threshold = case_when(
+      str_detect(status, "threshold") | str_detect(status, "object") ~ "w Threshold",
+      TRUE                                                         ~ "w/o Threshold"
+    ) %>% factor(levels = c("w/o Threshold", "w Threshold"))
+  ) %>% 
+  mutate( status_label = case_when(
+    status == "correct_classifications" | status == "correct_classifications_with_threshold" ~ "Correct",
+    status == "incorrect_classifications" ~ "Incorrect",
+    status == "objects_without_determination" ~ "No Determination",
+    TRUE ~ NA
+  ),
+  Determination = as.factor(status_label))
+#levels(temp$status_label)
+# 2) Now call ggbarstats, telling it to group by 'threshold'
+
+glimpse(temp)
+
+mod_taxa_select <- grouped_ggbarstats(
+  data             = temp,
+  x                = Determination,
+  y                = taxa,
+  grouping.var     = threshold,
+  results.subtitle = FALSE,
+  ggtheme          = theme_minimal(base_size = 16),
+  ggplot.component = list(
+    scale_fill_manual(
+      values = c(
+        "Correct"          = "#1b9e77",
+        "Incorrect"        = "#d95f02",
+        "No Determination" = "#7570b3"
+      ),
+      name = "Status"
+    ),
+    labs(
+    x     = "Taxa",
+    y     = "Percentage of Test Data",
+    legend = "Determination"
+  ),
+  theme(
+    axis.text.x = element_text(angle = 45, hjust = 1)
+  )
+  )
+)+
+  # collect the two legends into one
+  plot_layout(guides = "collect") & 
+  theme(legend.position = "bottom")
+
+print(mod_taxa_select)
+
+# Calculate percentage of determination status per taxon and threshold
+percent_summary <- temp %>%
+  group_by(taxa, threshold) %>%
+  count(status_label) %>%                      # count occurrences of each status
+  mutate(
+    Total = sum(n),                             # total test images per taxa & threshold
+    Percent = n / Total * 100                   # percentage
+  ) %>%
+  ungroup()
+
+# (Optional) pivot to wide format so each status is its own column
+percent_summary_wide <- percent_summary %>%
+  dplyr::select(-n) %>%
+  pivot_wider(
+    names_from  = status_label,
+    values_from = Percent,
+    values_fill = 0
+  )
+
+# View the result
+print(percent_summary)
+print(percent_summary_wide)
+
+write.csv(percent_summary, "../output/tables/percent_summary.csv")
+```
+
+```{r}
+
+size_accu_scatter <- ggplot(taxa_summary_prep %>% filter(rank == "family") %>% drop_na(size_bin) , 
+                            aes(x = mean_size, 
+                                y = accuracy_without_threshold)) +
+  geom_point(aes(fill= size_bin),alpha = 0.6, size = 4, stroke = 1, color = "black", shape = 21) +
+  scale_fill_viridis_d(name = "Arthropod Size") +
+  geom_smooth(method = "gam", 
+              formula = y ~ log(x), 
+              color = "black", 
+              fill  = "grey70", 
+              se    = TRUE) +
+  labs(
+    x     = "Average Family Body Size (mm)",
+    y     = "Accuracy w/o Threshold (%)"
+  ) +
+  theme_minimal(base_size = 16)+
+  theme(
+    legend.position = "bottom")
+  #facet_wrap( ~ rank, scales = "free_x")
+
+#summary(taxa_summary_prep$train_taxon_count)
+print(size_accu_scatter)
+
+spearman_res <- cor.test(
+  ~ mean_size + accuracy_without_threshold,
+  data   = taxa_summary_prep %>% drop_na(mean_size),
+  method = "spearman",
+  exact  = FALSE
+)
+
+# Print the test
+print(spearman_res)
+```
+
+> *Final Model Performance Plot*
+
+<div class="plot-container">
+```{r fig.align='default', fig.show='hold', fig.height=20, fig.width=18, results=TRUE}
+library(patchwork)
+
+
+# 2) First row: size plot twice as wide, heatmap one share
+row1 <- (model_perform | taxa_thresh_scatt  | taxa_thresh_bar) +
+  plot_layout(widths = c(1, 1, 0.5))
+
+# 3) Second row: day plot and the path diagram grob, equal widths
+row2 <- (taxa_accu_bin  | taxa_accu_scatter) +
+  plot_layout(widths = c(1, 1))
+
+row3 <- (mod_taxa_select | size_accu_scatter)+
+  plot_layout(widths = c(2, 1))
+
+# 4) Stack rows and add tags
+model_combined <- (row1 / row2 / row3) +
+  plot_layout(heights = c(1, 1, 1))+
+  plot_annotation(
+    tag_levels  = 'a',
+    tag_prefix  = '(',
+    tag_suffix  = ')'
+  ) &
+  theme(
+    plot.tag          = element_text(face = "bold", size = 16),
+    plot.tag.position = c(0, 1)
+  )
+
+print(model_combined)
+
+file_out <- paste0("hedges_model_performance", formatted_date, ".svg")
+ggsave(file_out, model_combined, width = 18, height = 20, dpi = 600)
+
+file_out <- paste0("hedges_model_performance", formatted_date, ".png")
+ggsave(file_out, model_combined, width = 18, height = 20, dpi = 600)
+
+# this will print the filename into your HTML
+cat("✅ Model Performance picture figure saved as: ", file_out, "\n")
+```
+</div>
+
+
+> *Export Summary Table*
+
+<div class="plot-container">
+```{r}
+# Packages
+library(dplyr)
+library(stringr)
+library(flextable)
+library(officer)
+
+# Input: taxa_model_summary_tbl (already in your environment)
+# Example structure shown in your message.
+
+# 1) Prepare pretty table (percent scales, labels)
+tbl <- taxa_model_summary_tbl %>%
+  mutate(
+    rank = factor(rank, levels = c("class", "order", "family")),
+    Rank = str_to_title(as.character(rank))
+  ) %>%
+  transmute(
+    Rank,
+    n_models,
+    # Confidence (%)
+    conf_mean = mean_confidence * 100,
+    conf_sd   = sd_confidence   * 100,
+    conf_min  = min_confidence  * 100,
+    conf_max  = max_confidence  * 100,
+    # Accuracy w/o threshold (%)
+    acc0_mean = mean_acc_no_thresh,
+    acc0_sd   = sd_acc_no_thresh,
+    acc0_min  = min_acc_no_thresh,
+    acc0_max  = max_acc_no_thresh,
+    acc0_pct95 = pct_acc_no_thresh_95,
+    # Accuracy w/ threshold (%)
+    acc1_mean = mean_acc_with_thresh,
+    acc1_sd   = sd_acc_with_thresh,
+    acc1_min  = min_acc_with_thresh,
+    acc1_max  = max_acc_with_thresh,
+    acc1_pct95 = pct_acc_with_thresh_95
+  )
+
+# 1) Round underlying data (all numeric columns) to 3 decimals
+num_cols <- names(dplyr::select(tbl, where(is.numeric)))
+tbl <- tbl %>%
+  dplyr::mutate(across(all_of(num_cols), ~ round(., 3)))
+
+# 2) Column keys & labels
+col_keys <- c(
+  "Rank","n_models",
+  "conf_mean","conf_sd","conf_min","conf_max",
+  "acc0_mean","acc0_sd","acc0_min","acc0_max","acc0_pct95",
+  "acc1_mean","acc1_sd","acc1_min","acc1_max","acc1_pct95"
+)
+
+header_labels <- c(
+  Rank        = "Rank",
+  n_models    = "n",
+  conf_mean   = "Mean",
+  conf_sd     = "SD",
+  conf_min    = "Min",
+  conf_max    = "Max",
+  acc0_mean   = "Mean",
+  acc0_sd     = "SD",
+  acc0_min    = "Min",
+  acc0_max    = "Max",
+  acc0_pct95  = "≥95%",
+  acc1_mean   = "Mean",
+  acc1_sd     = "SD",
+  acc1_min    = "Min",
+  acc1_max    = "Max",
+  acc1_pct95  = "≥95%"
+)
+
+# 3) Build flextable with grouped headers
+ft <- flextable(tbl, col_keys = col_keys) |>
+  set_header_labels(values = header_labels) |>
+  add_header_row(
+    values    = c("", "", "Confidence (%)", "Accuracy w/o Threshold (%)", "Accuracy w/ Threshold (%)"),
+    colwidths = c(1, 1, 4, 5, 5)
+  ) |>
+  align(align = "center", part = "all") |>
+  fontsize(size = 9, part = "all") |>
+  autofit() |>
+  border_remove() |>
+  hline(part = "header", border = fp_border(color = "black", width = 1)) |>
+  border_outer(border = fp_border(color = "black", width = 1.5)) |>
+  bg(part = "header", bg = "#D9E1F2") |>
+  bold(part = "header")
+
+# 2) (Re)build flextable as before (ft already built above); then format all numeric cols
+ft <- colformat_num(
+  ft,
+  j = num_cols,   # apply to every numeric column
+  digits = 3
+)
+
+# 4) Numeric formatting
+ft <- colformat_num(
+  ft,
+  j = c("conf_mean","conf_sd","conf_min","conf_max",
+        "acc0_mean","acc0_sd","acc0_min","acc0_max","acc0_pct95",
+        "acc1_mean","acc1_sd","acc1_min","acc1_max","acc1_pct95"),
+  digits = 1
+)
+
+# 5) Caption and save
+formatted_date <- format(Sys.Date(), "%Y%m%d")
+ft <- set_caption(
+  ft,
+  caption = "Supplementary Table S1. Summary of model performance by taxonomic rank: number of models, mean ± SD and range for confidence and accuracy (percent), and share of taxa meeting ≥95% accuracy."
+)
+
+doc <- read_docx() |>
+  body_add_flextable(ft)
+
+file_out <- paste0("Supplement_Table_Taxa_Model_Summary_", formatted_date, ".docx")
+print(doc, target = file_out)
+
+cat("✅ Supplementary model summary table saved as:", file_out, "\n")
+```
+
+<div class="plot-container">

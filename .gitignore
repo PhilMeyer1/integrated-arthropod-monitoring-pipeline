@@ -1,0 +1,226 @@
+# Integrated Arthropod Monitoring Pipeline - .gitignore
+# Combined from pipeline and analysis repositories
+
+# ============================================================================
+# Python
+# ============================================================================
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+MANIFEST
+
+# ============================================================================
+# R and RStudio
+# ============================================================================
+.Rhistory
+.RData
+.Rproj.user/
+.Rapp.history
+.httr-oauth
+.Renviron
+renv/
+.renv/
+
+# ============================================================================
+# Virtual Environments
+# ============================================================================
+venv/
+ENV/
+env/
+.venv/
+.env
+.venv.bak/
+.env.bak/
+
+# ============================================================================
+# IDEs & Editors
+# ============================================================================
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.project
+.pydevproject
+.settings/
+*.sublime-project
+*.sublime-workspace
+
+# ============================================================================
+# Operating System
+# ============================================================================
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+Desktop.ini
+
+# ============================================================================
+# Jupyter Notebook
+# ============================================================================
+.ipynb_checkpoints/
+*.ipynb_checkpoints/
+*/.ipynb_checkpoints/*
+
+# ============================================================================
+# Model Files (Large Binary Files)
+# ============================================================================
+# YOLO model weights
+*.pt
+*.pth
+*.onnx
+*.weights
+*.caffemodel
+*.pb
+
+# Trained models directory (except README)
+pipeline/data/models/*
+!pipeline/data/models/README.md
+!pipeline/data/models/.gitkeep
+
+# ============================================================================
+# Data Files
+# ============================================================================
+# Database files
+*.db
+*.sqlite
+*.sqlite3
+*.db-journal
+
+# CSV/Excel (except examples and publication data in analysis/)
+pipeline/*.csv
+pipeline/*.xlsx
+pipeline/*.xls
+!pipeline/data/examples/*.csv
+!pipeline/data/examples/metadata_example.csv
+
+# Analysis output files
+analysis/output/reports/*
+!analysis/output/reports/.gitkeep
+analysis/data/processed/*
+!analysis/data/processed/.gitkeep
+analysis/*.html
+analysis/*.pdf
+analysis/*.docx
+
+# Image data (except examples)
+pipeline/data/raw/*
+!pipeline/data/raw/.gitkeep
+!pipeline/data/raw/README.md
+
+pipeline/data/processed/*
+!pipeline/data/processed/.gitkeep
+!pipeline/data/processed/README.md
+
+# Example images (keep placeholders, not actual images if large)
+pipeline/data/examples/*.png
+pipeline/data/examples/*.jpg
+!pipeline/data/examples/README.md
+
+# ============================================================================
+# Output & Results
+# ============================================================================
+pipeline/output/
+pipeline/results/
+pipeline/exports/
+pipeline/training_data/
+pipeline/models/
+*.result.json
+
+# ============================================================================
+# Logs
+# ============================================================================
+logs/
+*.log
+*.log.*
+log/
+
+# ============================================================================
+# Testing & Coverage
+# ============================================================================
+.pytest_cache/
+.coverage
+.coverage.*
+htmlcov/
+.tox/
+.nox/
+coverage.xml
+*.cover
+.hypothesis/
+
+# ============================================================================
+# Documentation Build
+# ============================================================================
+docs/_build/
+docs/_static/
+docs/_templates/
+site/
+
+# ============================================================================
+# Temporary Files
+# ============================================================================
+*.tmp
+*.temp
+*.bak
+*.swp
+*~.nib
+*.orig
+
+# ============================================================================
+# Project Specific
+# ============================================================================
+# Sensitive configuration
+pipeline/config/local_config.yaml
+pipeline/config/secrets.yaml
+.env.local
+
+# Large training datasets
+pipeline/training_datasets/
+pipeline/data/training_datasets/
+
+# Training metadata
+**/training_summary*.json
+
+# Inference results (can be regenerated)
+pipeline/inference_results*.json
+
+# YOLO training runs (contains absolute paths and artifacts)
+pipeline/runs/
+
+# Internal documentation (not for reviewers)
+*_TESTING_SUMMARY.md
+PRE_SUBMISSION_REVIEW.md
+**/TESTING.md
+
+# Development utility scripts
+**/create_test_images.py
+**/test_insert_mock_data.py
+
+# ============================================================================
+# Keep These Files/Directories
+# ============================================================================
+!.gitkeep
+!**/example*
+!**/*_example.*
+!**/README.md
+.git_backup
