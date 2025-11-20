@@ -35,7 +35,12 @@ MANIFEST
 .Rapp.history
 .httr-oauth
 .Renviron
-renv/
+
+# R package cache (keep renv config, ignore library)
+renv/library/
+renv/local/
+renv/staging/
+renv/python/
 .renv/
 
 # ============================================================================
