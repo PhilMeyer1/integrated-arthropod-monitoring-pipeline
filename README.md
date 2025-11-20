@@ -5,7 +5,30 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Python 3.8+](https://img.shields.io/badge/python-3.8+-blue.svg)](https://www.python.org/downloads/)
 [![R 4.2+](https://img.shields.io/badge/R-4.2+-blue.svg)](https://www.r-project.org/)
-[![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.17512687.svg)](https://doi.org/10.5281/zenodo.17512687)
+[![Publication DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.17512687.svg)](https://doi.org/10.5281/zenodo.17512687)
+[![Code DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.XXXXXXX.svg)](https://doi.org/10.5281/zenodo.XXXXXXX)
+[![Models DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.YYYYYYY.svg)](https://doi.org/10.5281/zenodo.YYYYYYY)
+
+---
+
+## Data Availability
+
+### Trained Models and Example Data
+Detection and segmentation models (YOLOv8) and example composite images are available on Zenodo:
+- **DOI**: [10.5281/zenodo.YYYYYYY](https://doi.org/10.5281/zenodo.YYYYYYY)
+- **Contents**: Detection models (k1 and others), segmentation models (k1 and others), example composite images
+- **Size**: ~106 MB (compressed)
+
+### Classification Models
+The hierarchical classification models (YOLOv11) are **not publicly available** to protect commercial interests. These models are available upon reasonable request for academic research purposes. Contact: philipp.meyer@boku.ac.at
+
+### Complete Source Code
+All source code is archived on Zenodo:
+- **DOI**: [10.5281/zenodo.XXXXXXX](https://doi.org/10.5281/zenodo.XXXXXXX)
+- **GitHub**: [github.com/PhilMeyer1/integrated-arthropod-monitoring-pipeline](https://github.com/PhilMeyer1/integrated-arthropod-monitoring-pipeline)
+
+### Publication Data
+Specimen-level data (46,012 specimens), biomass measurements (378 measurements), and model performance metrics are included in this repository under [`analysis/data/raw/publication_data/`](analysis/data/raw/publication_data/).
 
 ---
 
@@ -113,16 +136,28 @@ Our integrated approach reveals:
 }
 ```
 
-### Code & Data
+### Code
 ```bibtex
 @software{Meyer2025code,
   author={Meyer, Philipp and Scharnhorst, Victor and Lechner, Michael and
           Haslinger, Hanna and Gierus, Martin and Meimberg, Harald},
-  title={Integrated Arthropod Monitoring Pipeline - Code and Data},
+  title={Integrated Arthropod Monitoring Pipeline - Source Code},
   year={2025},
-  publisher={GitHub},
-  url={https://github.com/PhilMeyer1/integrated-arthropod-monitoring-pipeline},
-  doi={10.5281/zenodo.17512687}
+  publisher={Zenodo},
+  doi={10.5281/zenodo.XXXXXXX},
+  url={https://github.com/PhilMeyer1/integrated-arthropod-monitoring-pipeline}
+}
+```
+
+### Models & Example Data
+```bibtex
+@dataset{Meyer2025models,
+  author={Meyer, Philipp and Scharnhorst, Victor and Lechner, Michael and
+          Haslinger, Hanna and Gierus, Martin and Meimberg, Harald},
+  title={Detection and Segmentation Models for Arthropod Monitoring Pipeline},
+  year={2025},
+  publisher={Zenodo},
+  doi={10.5281/zenodo.YYYYYYY}
 }
 ```
 
@@ -183,4 +218,4 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 All analyses are fully reproducible using the code and data provided in this repository. The pipeline processes specimens from raw images to taxonomic classifications, and the statistical analysis scripts generate all figures and tables in the manuscript.
 
-**Last Updated**: 2025-01-14
+**Last Updated**: 2025-01-20

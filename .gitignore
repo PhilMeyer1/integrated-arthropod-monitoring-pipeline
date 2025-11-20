@@ -229,3 +229,5 @@ PRE_SUBMISSION_REVIEW.md
 !**/*_example.*
 !**/README.md
 .git_backup
+# Zenodo dataset archive (upload separately)
+*.zip
