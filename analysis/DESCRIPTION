@@ -1,0 +1,45 @@
+
+Package: ArthropodMonitoringAnalysis
+Title: Statistical Analysis for Integrated Arthropod Monitoring Pipeline
+Version: 1.0.0
+Authors@R: person("Victor", "Scharnhorst",
+                  role = c("aut", "cre"),
+                  email = "victor.scharnhorst@example.com")
+Description: R analysis scripts and statistical models for arthropod biodiversity
+    monitoring data. This package contains the analysis code for the publication
+    "Cheaper, Faster, More Comprehensive: AI-based image analysis pipeline for
+    biodiversity surveys" submitted to Current Biology.
+License: MIT + file ../LICENSE
+Encoding: UTF-8
+Depends:
+    R (>= 4.0.0)
+Imports:
+    DT,
+    tidyverse,
+    rio,
+    data.table,
+    lubridate,
+    ggpubr,
+    ggsci,
+    mgcv,
+    ggstatsplot,
+    patchwork,
+    funspace,
+    car,
+    broom,
+    glmnet,
+    MASS,
+    DHARMa,
+    codyn,
+    viridis,
+    iNEXT,
+    vegan,
+    cluster,
+    ggordiplots,
+    openxlsx,
+    svglite,
+    glmmTMB
+Suggests:
+    knitr,
+    rmarkdown
+VignetteBuilder: knitr

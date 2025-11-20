@@ -18,6 +18,98 @@ data-analysis/
 └── README.md
 ```
 
+## Requirements
+
+- **R version**: 4.0.0 or higher
+- **Required packages**: 25 packages (see `DESCRIPTION` file)
+- **System**: Windows, macOS, or Linux
+
+## Installation
+
+This analysis requires several R packages. We provide three installation methods:
+
+### Method 1: Using renv (Recommended for Reproducibility)
+
+This method installs the exact package versions used in the publication:
+
+```r
+# Install renv if not already installed
+install.packages("renv")
+
+# Restore exact package versions from renv.lock
+renv::restore()
+```
+
+**When to use**: For exact reproducibility of publication results, code reviews, or when submitting to journals.
+
+### Method 2: Using DESCRIPTION File
+
+This method installs the latest compatible versions of all required packages:
+
+```r
+# Install remotes if not already installed
+install.packages("remotes")
+
+# Install all dependencies from DESCRIPTION
+remotes::install_deps(dependencies = TRUE)
+```
+
+**When to use**: For general analysis or when you want the latest package versions.
+
+### Method 3: Interactive Setup Script
+
+Run the interactive setup script that guides you through the installation:
+
+```r
+source("setup.R")
+```
+
+This script will:
+1. Check your R version
+2. Present all three installation options
+3. Install missing packages
+4. Verify the installation
+
+### Manual Package Installation
+
+If you prefer to install packages manually:
+
+```r
+required_packages <- c(
+  "DT", "tidyverse", "rio", "data.table", "lubridate",
+  "ggpubr", "ggsci", "mgcv", "ggstatsplot", "patchwork",
+  "funspace", "car", "broom", "glmnet", "MASS",
+  "DHARMa", "codyn", "viridis", "iNEXT", "vegan",
+  "cluster", "ggordiplots", "openxlsx", "svglite", "glmmTMB"
+)
+
+install.packages(required_packages)
+```
+
+### Initializing renv (For First-Time Contributors)
+
+If you need to create a new `renv.lock` file (e.g., after updating packages):
+
+```r
+# In RStudio, open data-analysis.Rproj, then:
+source("init_renv.R")
+
+# Or manually:
+renv::init()
+renv::snapshot()
+```
+
+### Troubleshooting
+
+**Issue**: `glmmTMB` installation fails
+**Solution**: On Windows, you may need Rtools. Download from: https://cran.r-project.org/bin/windows/Rtools/
+
+**Issue**: `ggstatsplot` has dependency conflicts
+**Solution**: Update all packages first with `update.packages(ask = FALSE)`
+
+**Issue**: Packages install but fail to load
+**Solution**: Restart R session and try loading packages individually to identify the problematic one
+
 ## Data Sources
 
 The raw data is located in `data/raw/publication_data/`:

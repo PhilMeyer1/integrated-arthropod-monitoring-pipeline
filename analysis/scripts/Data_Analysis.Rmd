@@ -90,12 +90,12 @@ treatment_palette <- c(
 ```{r , warning = FALSE, message = FALSE }
 results_raw <- import("../data/raw/publication_data/specimen_data.xlsx",  sheet = 1, stringsAsFactors = TRUE)  # convenience function from package "rio"
 
-model_summary_raw <- import("../data/raw/publication_data/specimen_data.xlsx",  sheet = 2, stringsAsFactors = TRUE)
+model_summary_raw <- import("../data/raw/publication_data/model_performance.xlsx",  sheet = 2, stringsAsFactors = TRUE)
 
 taxa_summary_raw <- import("../data/raw/publication_data/model_performance.xlsx",  sheet = 3, stringsAsFactors = TRUE)
 
-bm2024 <- import("../data/raw/publication_data/biomass_data.xlsx", skip = 2)
-bm_2023 <- import("../data/raw/publication_data/biomass_data.xlsx", skip = 3)
+bm2024 <- import("../data/raw/publication_data/biomass_data.xlsx", sheet = 1, skip = 2)
+bm_2023 <- import("../data/raw/publication_data/biomass_data.xlsx", sheet = 2, skip = 3)
 ```
 
 
