@@ -1,50 +1,44 @@
 # Example Data
 
-This directory contains example data for testing the arthropod classification pipeline.
+This directory contains **real example composite images** from the study for testing and demonstrating the arthropod classification pipeline.
 
 ## Directory Structure
 
 ```
 examples/
 ├── README.md                          # This file
-├── metadata_example.csv               # Example metadata for batch processing
-├── composite_S001_1mm.png            # Example composite image (1-2mm fraction)
-├── composite_S002_2mm.png            # Example composite image (2-3mm fraction)
-└── composite_S003_k1.png             # Example composite image (<1mm fraction)
+├── metadata_example.csv               # Metadata for example images
+├── composite_S001_k1.jpg              # Real composite image (<1mm fraction, 42 MB)
+└── composite_S002_1.5mm.jpg           # Real composite image (1-2mm fraction, 48 MB)
 ```
 
-## Creating Test Images
+## Example Images
 
-Since we cannot include actual specimen images in the repository, you need to:
+### composite_S001_k1.jpg
 
-1. **For testing with your own data:**
-   - Place composite images in this directory
-   - Update `metadata_example.csv` with correct paths and metadata
+**Properties**:
+- **Size Fraction**: k1 (<1mm)
+- **File Size**: 42 MB
+- **Source**: Sample 331, k1 fraction from the study
+- **Resolution**: High-resolution composite image
+- **Content**: Multiple small arthropod specimens on white background
 
-2. **For creating synthetic test images:**
-   ```python
-   # Create a simple test composite image
-   import cv2
-   import numpy as np
+**Expected Processing**:
+- Detection and segmentation of small arthropods
+- Suitable for testing the pipeline's ability to handle tiny specimens
 
-   # Create blank white image (similar to actual composite backgrounds)
-   img = np.ones((3000, 4000, 3), dtype=np.uint8) * 248
+### composite_S002_1.5mm.jpg
 
-   # Add some simple specimen-like shapes (circles/ellipses)
-   for i in range(10):
-       x = np.random.randint(100, 3900)
-       y = np.random.randint(100, 2900)
-       size = np.random.randint(20, 100)
-       color = (np.random.randint(50, 150), np.random.randint(50, 150), np.random.randint(50, 150))
-       cv2.circle(img, (x, y), size, color, -1)
+**Properties**:
+- **Size Fraction**: 1.5mm (1-2mm)
+- **File Size**: 48 MB
+- **Source**: Sample 331, 1.5mm fraction from the study
+- **Resolution**: High-resolution composite image
+- **Content**: Multiple arthropod specimens in the 1-2mm size range
 
-   cv2.imwrite('data/examples/composite_S001_1mm.png', img)
-   ```
-
-3. **Using actual data (recommended):**
-   - Copy a few real composite images from your dataset
-   - Rename them to match the naming convention
-   - Update the metadata CSV
+**Expected Processing**:
+- Detection and segmentation of medium-sized arthropods
+- Demonstrates pipeline performance across different size fractions
 
 ## Metadata CSV Format
 
@@ -54,11 +48,11 @@ The metadata CSV requires the following columns:
 - **sample_id**: Sample identifier (e.g., S001, S002)
 - **size_fraction**: Size fraction code (k1, 1, 2, 3, 5, 7, A)
 
-Example:
+Example (current metadata):
 ```csv
 image_path,sample_id,size_fraction
-data/examples/composite_S001_1mm.png,S001,1
-data/examples/composite_S002_2mm.png,S002,2
+data/examples/composite_S001_k1.jpg,S001,k1
+data/examples/composite_S002_1.5mm.jpg,S002,1
 ```
 
 ## Running the Example
@@ -66,9 +60,9 @@ data/examples/composite_S002_2mm.png,S002,2
 ### Single Image Mode
 ```bash
 python scripts/02_process_images.py \
-    --input data/examples/composite_S001_1mm.png \
+    --input data/examples/composite_S001_k1.jpg \
     --sample-id S001 \
-    --size-fraction 1 \
+    --size-fraction k1 \
     --output-dir ./output/test_run
 ```
 
@@ -83,37 +77,66 @@ python scripts/02_process_images.py \
 ```bash
 python scripts/02_process_images.py \
     --input-dir data/examples \
-    --pattern "composite_*.png" \
+    --pattern "composite_*.jpg" \
     --output-dir ./output/test_run
 ```
 
 ## Expected Output
 
-After processing, you should see:
+After processing the example images, you should see extracted specimen cutouts:
 
 ```
 output/test_run/
 ├── S001/
-│   └── 1/
-│       ├── S001_1_0001.png
-│       ├── S001_1_0002.png
+│   └── k1/
+│       ├── S001_k1_0001.png
+│       ├── S001_k1_0002.png
+│       ├── S001_k1_0003.png
 │       └── metadata.json
 ├── S002/
-│   └── 2/
-│       ├── S002_2_0001.png
+│   └── 1/
+│       ├── S002_1_0001.png
+│       ├── S002_1_0002.png
 │       └── metadata.json
 └── processing_results.csv
 ```
 
+The number of extracted specimens will depend on the actual arthropod count in each image.
+
 ## Notes
 
-- **YOLO Models Required**: Ensure you have downloaded the detection and segmentation models first:
-  ```bash
-  python scripts/download_models.py
-  ```
+- **Models Included**: The detection and segmentation models (`scale_cutout2.pt`, `scale_segmentation2.pt`) are included in `data/models/`. These are the actual models used in the study.
 
-- **Image Size**: Example images should be reasonably sized (e.g., 2000-5000px) to test tiling properly
+- **Image Size**: The example images are high-resolution (42-48 MB) and representative of actual study data. Processing may take several minutes depending on hardware.
 
-- **GPU vs CPU**: First run will be slower as YOLO models are loaded. GPU is recommended for larger images.
+- **GPU vs CPU**: GPU is highly recommended for these large images. Processing time:
+  - With GPU: ~2-5 minutes per image
+  - With CPU: ~10-30 minutes per image
+
+- **Expected Detections**:
+  - composite_S001_k1.jpg: Multiple small arthropods (<1mm)
+  - composite_S002_1.5mm.jpg: Medium-sized arthropods (1-2mm)
 
 - **Troubleshooting**: Check logs in `./logs/pipeline.log` for detailed processing information
+
+## Performance Testing
+
+To verify the pipeline works correctly with these examples:
+
+```bash
+# Quick test (just detection and segmentation)
+python scripts/test_core_components.py
+
+# Full pipeline test
+python scripts/02_process_images.py \
+    --metadata data/examples/metadata_example.csv \
+    --output-dir ./output/example_test
+```
+
+## Using Your Own Images
+
+To test with your own composite images:
+
+1. Place images in this directory
+2. Update `metadata_example.csv` with your image paths and metadata
+3. Run the processing script as shown above

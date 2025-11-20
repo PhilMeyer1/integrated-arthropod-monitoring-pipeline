@@ -73,7 +73,7 @@ python scripts/calibrate_thresholds.py --set-number 1
 # Custom parameters
 python scripts/calibrate_thresholds.py \
     --set-number 1 \
-    --target-accuracy 97.0 \
+    --target-accuracy 95.0 \
     --start-threshold 0.90 \
     --increment 0.0001
 

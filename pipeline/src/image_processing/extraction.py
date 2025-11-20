@@ -109,8 +109,8 @@ class SpecimenExtractor:
             filename = f"{sample_id}_{size_fraction}_{i + 1:04d}.{self.output_format}"
             file_path = self.output_dir / filename
 
-            # Save image
-            success = cv2.imwrite(str(file_path), cv2.cvtColor(segmented_image, cv2.COLOR_RGBA2BGRA))
+            # Save image (write directly - segmented_image is already in correct format)
+            success = cv2.imwrite(str(file_path), segmented_image)
 
             if not success:
                 if verbose:

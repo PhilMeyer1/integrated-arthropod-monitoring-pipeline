@@ -17,6 +17,9 @@ from ultralytics import YOLO
 
 from src.config import config
 
+# Allow very large composite images (typical: 42-48 MB, high resolution)
+Image.MAX_IMAGE_PIXELS = None
+
 
 class SpecimenSegmenter:
     """
@@ -40,8 +43,8 @@ class SpecimenSegmenter:
         model_path: Optional[str] = None,
         dilation_factor: int = 10,
         background_color: Tuple[int, int, int, int] = (248, 248, 248, 255),
-        conf_threshold: float = 0.05,
-        iou_threshold: float = 0.2
+        conf_threshold: Optional[float] = None,
+        iou_threshold: Optional[float] = None
     ):
         """
         Initialize specimen segmenter.
@@ -51,8 +54,8 @@ class SpecimenSegmenter:
             model_path: Path to YOLO segmentation model. If None, uses config.
             dilation_factor: Base dilation factor (scaled by image size)
             background_color: RGBA background color for extracted specimens
-            conf_threshold: Confidence threshold for segmentation
-            iou_threshold: IoU threshold for NMS
+            conf_threshold: Confidence threshold for segmentation. If None, uses config.
+            iou_threshold: IoU threshold for NMS. If None, uses config.
         """
         self.size_fraction = size_fraction
 
@@ -66,8 +69,10 @@ class SpecimenSegmenter:
 
         self.dilation_factor = dilation_factor
         self.background_color = background_color
-        self.conf_threshold = conf_threshold
-        self.iou_threshold = iou_threshold
+
+        # Load thresholds from config if not provided
+        self.conf_threshold = conf_threshold or config.get('image_processing.segmentation.confidence_threshold', 0.05)
+        self.iou_threshold = iou_threshold or config.get('image_processing.segmentation.iou_threshold', 0.1)
 
         # Weighting for NMS (balance confidence vs. size)
         self.size_weight = 0.6
@@ -127,7 +132,7 @@ class SpecimenSegmenter:
                 continue
 
             # Run YOLO segmentation on tile
-            results = self.model(tile, iou=0.1, conf=self.conf_threshold, verbose=False)
+            results = self.model(tile, iou=self.iou_threshold, conf=self.conf_threshold, verbose=False)
 
             if not results:
                 continue

@@ -141,12 +141,12 @@ All parameters can be configured in `config/default_config.yaml`:
 ```yaml
 image_processing:
   detection:
-    model_path: "./data/models/detection/yolov8n.pt"
+    model_path: "./data/models/detection/scale_cutout2.pt"
     confidence_threshold: 0.25
     iou_threshold: 0.2
 
   segmentation:
-    model_path: "./data/models/segmentation/yolov8n-seg.pt"
+    model_path: "./data/models/segmentation/scale_segmentation2.pt"
     mask_dilation_factor: 1.02
 
   size_fractions:
@@ -170,14 +170,11 @@ image_processing:
 
 ## Models
 
-Pre-trained YOLO models required:
-- Detection: `yolov8n.pt` (object detection)
-- Segmentation: `yolov8n-seg.pt` (instance segmentation)
+Trained YOLO models included in repository:
+- Detection: `scale_cutout2.pt` (22 MB) - Detects individual arthropod specimens
+- Segmentation: `scale_segmentation2.pt` (53 MB) - Segments specimens with pixel-level masks
 
-Download using:
-```bash
-python scripts/download_models.py
-```
+These are the actual models used in the publication. See `data/models/README.md` for details.
 
 Different models can be used for different size fractions (configured in YAML).
 

@@ -18,17 +18,18 @@ database:
 
 # Image Processing
 image_processing:
-  # Detection settings
+  # Detection settings (default for most size fractions)
   detection:
-    model_path: "./data/models/detection/yolov8n.pt"
-    confidence_threshold: 0.25
-    iou_threshold: 0.2
+    model_path: "./data/models/detection/detect_others.pt"
+    confidence_threshold: 0.01  # Very low threshold for small arthropods
+    iou_threshold: 0.9  # High IOU for detection phase
     device: "cuda"  # "cuda" for GPU, "cpu" for CPU-only
 
-  # Segmentation settings
+  # Segmentation settings (default for most size fractions)
   segmentation:
-    model_path: "./data/models/segmentation/yolov8n-seg.pt"
-    confidence_threshold: 0.25
+    model_path: "./data/models/segmentation/segment_others.pt"
+    confidence_threshold: 0.05  # Low threshold for segmentation
+    iou_threshold: 0.1  # Low IOU for segmentation NMS
     mask_dilation_factor: 1.02
     device: "cuda"
 
@@ -41,26 +42,36 @@ image_processing:
   # Grid size: [rows, cols] for tiling
   # Overlap: 0.0-1.0 (percentage)
   size_fractions:
-    k1:  # <1 mm specimens
+    k1:  # <1 mm specimens - uses specialized k1 models
       grid_size: [20, 12]
       overlap: 0.4
-      detection_model: "./data/models/detection/yolov8n.pt"
-      segmentation_model: "./data/models/segmentation/yolov8n-seg.pt"
+      detection_model: "./data/models/detection/detect_k1.pt"
+      segmentation_model: "./data/models/segmentation/segment_k1.pt"
     "1":  # 1-2 mm specimens
       grid_size: [10, 8]
       overlap: 0.3
-      detection_model: "./data/models/detection/yolov8n.pt"
-      segmentation_model: "./data/models/segmentation/yolov8n-seg.pt"
+      detection_model: "./data/models/detection/detect_others.pt"
+      segmentation_model: "./data/models/segmentation/segment_others.pt"
     "2":  # 2-3 mm specimens
       grid_size: [6, 5]
       overlap: 0.25
-      detection_model: "./data/models/detection/yolov8n.pt"
-      segmentation_model: "./data/models/segmentation/yolov8n-seg.pt"
+      detection_model: "./data/models/detection/detect_others.pt"
+      segmentation_model: "./data/models/segmentation/segment_others.pt"
+    "3":  # 3-5 mm specimens
+      grid_size: [6, 5]
+      overlap: 0.25
+      detection_model: "./data/models/detection/detect_others.pt"
+      segmentation_model: "./data/models/segmentation/segment_others.pt"
+    "5":  # 5-7 mm specimens
+      grid_size: [3, 3]
+      overlap: 0.2
+      detection_model: "./data/models/detection/detect_others.pt"
+      segmentation_model: "./data/models/segmentation/segment_others.pt"
     "7":  # 7-10 mm specimens
       grid_size: [1, 1]
       overlap: 0.0
-      detection_model: "./data/models/detection/yolov8n.pt"
-      segmentation_model: "./data/models/segmentation/yolov8n-seg.pt"
+      detection_model: "./data/models/detection/detect_others.pt"
+      segmentation_model: "./data/models/segmentation/segment_others.pt"
 
 # Classification
 classification:

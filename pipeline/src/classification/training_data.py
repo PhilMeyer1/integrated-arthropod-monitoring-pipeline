@@ -24,6 +24,9 @@ from src.classification.taxonomy import TaxonomyHierarchy
 from src.utils.logging_config import get_logger
 from src.config import config
 
+# Allow very large composite images (typical: 42-48 MB, high resolution)
+Image.MAX_IMAGE_PIXELS = None
+
 logger = get_logger(__name__)
 
 

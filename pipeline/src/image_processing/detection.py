@@ -15,6 +15,9 @@ from ultralytics import YOLO
 
 from src.config import config
 
+# Allow very large composite images (typical: 42-48 MB, high resolution)
+Image.MAX_IMAGE_PIXELS = None
+
 
 class SpecimenDetector:
     """
@@ -192,7 +195,7 @@ class SpecimenDetector:
         tile_array = np.array(tile)
 
         # Run YOLO detection
-        results = self.model(tile_array, conf=self.conf_threshold, verbose=False)
+        results = self.model(tile_array, conf=self.conf_threshold, iou=self.iou_threshold, verbose=False)
 
         detections = []
         margin_x, margin_y = self._calculate_border_margins(tile)

@@ -381,7 +381,7 @@ paths:
 
 image_processing:
   detection:
-    model_path: "${paths.models}/detection/yolov8n.pt"
+    model_path: "${paths.models}/detection/scale_cutout2.pt"
     confidence_threshold: 0.25
 
   size_fractions:
