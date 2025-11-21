@@ -1,0 +1,90 @@
+[
+  {
+    "taxon_id": "RT",
+    "name": "Arthropoda",
+    "rank": "phylum",
+    "parent_id": null,
+    "col_id": "Arthropoda",
+    "col_name": "Arthropoda"
+  },
+  {
+    "taxon_id": "INSECTA",
+    "name": "Insecta",
+    "rank": "class",
+    "parent_id": "RT",
+    "col_id": "Insecta",
+    "col_name": "Insecta"
+  },
+  {
+    "taxon_id": "COLEOPTERA",
+    "name": "Coleoptera",
+    "rank": "order",
+    "parent_id": "INSECTA",
+    "col_id": "Coleoptera",
+    "col_name": "Coleoptera"
+  },
+  {
+    "taxon_id": "DIPTERA",
+    "name": "Diptera",
+    "rank": "order",
+    "parent_id": "INSECTA",
+    "col_id": "Diptera",
+    "col_name": "Diptera"
+  },
+  {
+    "taxon_id": "HYMENOPTERA",
+    "name": "Hymenoptera",
+    "rank": "order",
+    "parent_id": "INSECTA",
+    "col_id": "Hymenoptera",
+    "col_name": "Hymenoptera"
+  },
+  {
+    "taxon_id": "HEMIPTERA",
+    "name": "Hemiptera",
+    "rank": "order",
+    "parent_id": "INSECTA",
+    "col_id": "Hemiptera",
+    "col_name": "Hemiptera"
+  },
+  {
+    "taxon_id": "CARABIDAE",
+    "name": "Carabidae",
+    "rank": "family",
+    "parent_id": "COLEOPTERA",
+    "col_id": "Carabidae",
+    "col_name": "Carabidae"
+  },
+  {
+    "taxon_id": "STAPHYLINIDAE",
+    "name": "Staphylinidae",
+    "rank": "family",
+    "parent_id": "COLEOPTERA",
+    "col_id": "Staphylinidae",
+    "col_name": "Staphylinidae"
+  },
+  {
+    "taxon_id": "CURCULIONIDAE",
+    "name": "Curculionidae",
+    "rank": "family",
+    "parent_id": "COLEOPTERA",
+    "col_id": "Curculionidae",
+    "col_name": "Curculionidae"
+  },
+  {
+    "taxon_id": "FORMICIDAE",
+    "name": "Formicidae",
+    "rank": "family",
+    "parent_id": "HYMENOPTERA",
+    "col_id": "Formicidae",
+    "col_name": "Formicidae"
+  },
+  {
+    "taxon_id": "APHIDIDAE",
+    "name": "Aphididae",
+    "rank": "family",
+    "parent_id": "HEMIPTERA",
+    "col_id": "Aphididae",
+    "col_name": "Aphididae"
+  }
+]
