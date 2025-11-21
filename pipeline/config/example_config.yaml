@@ -1,0 +1,34 @@
+# Example User Configuration
+# Copy this file and customize for your project
+
+# Override paths for your system
+paths:
+  data_root: "/path/to/your/data"
+  raw_data: "/path/to/your/data/raw"
+  processed_data: "/path/to/your/data/processed"
+  output: "/path/to/output"
+
+# Enable database mode
+database:
+  use_database: true
+  url: "postgresql://username:password@localhost:5432/your_database"
+
+# Adjust for your hardware
+image_processing:
+  detection:
+    device: "cpu"  # Change to "cpu" if no GPU available
+  segmentation:
+    device: "cpu"
+
+classification:
+  training:
+    batch_size: 8  # Reduce if running out of memory
+    epochs: 100    # Increase for better results
+    device: "cpu"
+  inference:
+    batch_size: 50  # Reduce if running out of memory
+
+# Custom logging
+logging:
+  level: "DEBUG"
+  file: "/path/to/your/logs/pipeline.log"

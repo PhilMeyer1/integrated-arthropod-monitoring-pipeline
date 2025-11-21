@@ -1,0 +1,67 @@
+cff-version: 1.2.0
+message: "If you use this software, please cite it as below."
+type: software
+title: "Integrated Arthropod Monitoring Pipeline - Code and Data"
+version: 1.0.0
+doi: 10.5281/zenodo.17661710
+date-released: 2025-01-14
+url: "https://github.com/PhilMeyer1/integrated-arthropod-monitoring-pipeline"
+repository-code: "https://github.com/PhilMeyer1/integrated-arthropod-monitoring-pipeline"
+license: MIT
+authors:
+  - family-names: "Meyer"
+    given-names: "Philipp"
+    orcid: "https://orcid.org/0000-0002-9795-7794"
+    affiliation: "BOKU University, Vienna, Austria"
+    email: "philipp.meyer@boku.ac.at"
+  - family-names: "Scharnhorst"
+    given-names: "Victor"
+    affiliation: "BOKU University, Vienna, Austria"
+    orcid: "https://orcid.org/0000-0003-1010-2919"
+  - family-names: "Lechner"
+    given-names: "Michael"
+    affiliation: "BOKU University, Vienna, Austria"
+  - family-names: "Haslinger"
+    given-names: "Hanna"
+    affiliation: "BOKU University, Vienna, Austria"
+  - family-names: "Gierus"
+    given-names: "Martin"
+    affiliation: "BOKU University, Vienna, Austria"
+    orcid: https://orcid.org/0000-0001-6909-0356
+  - family-names: "Meimberg"
+    given-names: "Harald"
+    affiliation: "BOKU University, Vienna, Austria"
+    orcid: https://orcid.org/0000-0001-6696-2649
+keywords:
+  - arthropods
+  - biodiversity
+  - computer vision
+  - deep learning
+  - hierarchical classification
+  - size-dependent responses
+  - habitat enhancement
+  - YOLOv11
+  - ecological monitoring
+abstract: |
+  Companion repository for the manuscript "Integrated arthropod monitoring pipeline
+  detects size-dependent responses" (manuscript in review, 2025). Contains the complete
+  AI-based classification pipeline and statistical analysis code for processing
+  arthropod specimens from high-resolution images to taxonomic classifications,
+  revealing size-dependent ecological responses to habitat enhancements.
+references:
+  - type: article
+    authors:
+      - family-names: "Meyer"
+        given-names: "Philipp"
+      - family-names: "Scharnhorst"
+        given-names: "Victor"
+      - family-names: "Lechner"
+        given-names: "Michael"
+      - family-names: "Haslinger"
+        given-names: "Hanna"
+      - family-names: "Gierus"
+        given-names: "Martin"
+      - family-names: "Meimberg"
+        given-names: "Harald"
+    title: "Integrated arthropod monitoring pipeline detects size-dependent responses"
+    year: 2025

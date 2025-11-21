@@ -1,0 +1,58 @@
+{
+  "title": "Integrated Arthropod Monitoring Pipeline",
+  "creators": [
+    {
+      "name": "Meyer, Philipp",
+      "affiliation": "University of Natural Resources and Life Sciences (BOKU), Vienna, Austria"
+    },
+    {
+      "name": "Scharnhorst, Victor",
+      "affiliation": "University of Natural Resources and Life Sciences (BOKU), Vienna, Austria"
+    },
+    {
+      "name": "Lechner, Michael",
+      "affiliation": "University of Natural Resources and Life Sciences (BOKU), Vienna, Austria"
+    },
+    {
+      "name": "Haslinger, Hanna",
+      "affiliation": "University of Natural Resources and Life Sciences (BOKU), Vienna, Austria"
+    },
+    {
+      "name": "Gierus, Martin",
+      "affiliation": "University of Natural Resources and Life Sciences (BOKU), Vienna, Austria"
+    },
+    {
+      "name": "Meimberg, Harald",
+      "affiliation": "University of Natural Resources and Life Sciences (BOKU), Vienna, Austria"
+    }
+  ],
+  "description": "A comprehensive pipeline for automated detection, segmentation, and classification of arthropod specimens from composite images. This software implements the methods described in 'Integrated arthropod monitoring pipeline detects size-dependent responses' (manuscript in review, 2025).",
+  "keywords": [
+    "arthropod monitoring",
+    "computer vision",
+    "deep learning",
+    "species detection",
+    "biodiversity",
+    "YOLOv8",
+    "YOLOv11",
+    "image segmentation",
+    "hierarchical classification",
+    "ecological monitoring"
+  ],
+  "license": "MIT",
+  "upload_type": "software",
+  "access_right": "open",
+  "language": "eng",
+  "related_identifiers": [
+    {
+      "identifier": "10.5281/zenodo.17661921",
+      "relation": "isSupplementedBy",
+      "resource_type": "dataset",
+      "scheme": "doi"
+    }
+  ],
+  "references": [
+    "Meyer, P., Scharnhorst, V., Lechner, M., Haslinger, H., Gierus, M., & Meimberg, H. (2025). Integrated arthropod monitoring pipeline detects size-dependent responses. Manuscript in review."
+  ],
+  "version": "1.0.0"
+}

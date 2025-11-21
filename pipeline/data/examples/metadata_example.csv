@@ -1,0 +1,3 @@
+image_path,sample_id,size_fraction
+data/examples/composite_S001_k1.jpg,S001,k1
+data/examples/composite_S002_1.5mm.jpg,S002,1
