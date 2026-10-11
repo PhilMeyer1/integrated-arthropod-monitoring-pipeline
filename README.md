@@ -97,7 +97,7 @@ integrated-arthropod-monitoring-pipeline/
 │   └── README.md              # Detailed pipeline documentation
 │
 ├── analysis/                  # Statistical analysis & publication data
-│   ├── data/raw/              # Publication datasets (46,012 specimens)
+│   ├── data/raw/              # Publication datasets (reduced to what the analysis reads)
 │   ├── scripts/               # R Markdown analysis scripts
 │   ├── output/                # Generated tables & figures
 │   └── README.md              # Analysis documentation
@@ -117,9 +117,11 @@ integrated-arthropod-monitoring-pipeline/
 - **Analysis Documentation**: [`analysis/README.md`](analysis/README.md)
 
 ### Publication Data (Included in Repository)
-- **Specimen Data**: [`analysis/data/raw/publication_data/specimen_data.xlsx`](analysis/data/raw/publication_data/specimen_data.xlsx) (46,012 specimens)
-- **Biomass Data**: [`analysis/data/raw/publication_data/biomass_data.xlsx`](analysis/data/raw/publication_data/biomass_data.xlsx) (378 measurements from 54 samples × 7 size fractions)
-- **Model Performance**: [`analysis/data/raw/publication_data/model_performance.xlsx`](analysis/data/raw/publication_data/model_performance.xlsx) (73 taxa)
+Reduced to what the analysis reads: sites carry neutral codes, sampling dates are given as year and day of the year, coordinates are not included. Columns and coding: [`analysis/data/raw/publication_data/README.md`](analysis/data/raw/publication_data/README.md).
+- **Specimen Data**: [`analysis/data/raw/publication_data/specimen_data.xlsx`](analysis/data/raw/publication_data/specimen_data.xlsx) (40,090 specimens of the 54 valid samples)
+- **Biomass Data**: [`analysis/data/raw/publication_data/biomass_data.xlsx`](analysis/data/raw/publication_data/biomass_data.xlsx) (371 weighed size fractions of the 54 samples)
+- **Model Performance**: [`analysis/data/raw/publication_data/model_performance.xlsx`](analysis/data/raw/publication_data/model_performance.xlsx) (test-set performance per model and per taxon)
+- **Climate Data**: [`analysis/data/raw/publication_data/climate_data.xlsx`](analysis/data/raw/publication_data/climate_data.xlsx) (daily precipitation and temperature per site and sampling day)
 
 ---
 

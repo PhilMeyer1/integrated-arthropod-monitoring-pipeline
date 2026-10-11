@@ -1,50 +1,115 @@
 --- a/Data_Analysis.Rmd
 +++ b/Data_Analysis.Rmd
-@@ -100,8 +100,12 @@
+@@ -96,12 +96,17 @@
+ # sensitivity analysis with all 54 samples (see analysis/README.md).
+ if (nzchar(params$exclude_sample)) results_raw <- results_raw %>% filter(as.character(zuordnung_id) != params$exclude_sample)
  
- taxa_summary_raw <- import("../data/raw/publication_data/model_performance.xlsx",  sheet = 3, stringsAsFactors = TRUE)
- 
+-model_summary_raw <- import("../data/raw/publication_data/model_performance.xlsx",  sheet = 2, stringsAsFactors = TRUE)
+-
+-taxa_summary_raw <- import("../data/raw/publication_data/model_performance.xlsx",  sheet = 3, stringsAsFactors = TRUE)
+-
 -bm2024 <- import("../data/raw/publication_data/biomass_data.xlsx", sheet = 1, skip = 2)
 -bm_2023 <- import("../data/raw/publication_data/biomass_data.xlsx", sheet = 2, skip = 3)
++# REPRODUCTION: the archived model_performance.xlsx holds only the two test-set
++# sheets read here (sheets 2 and 3 of the full file), so they are read by name.
++model_summary_raw <- import("../data/raw/publication_data/model_performance.xlsx",  sheet = "TestObjects Model Performance", stringsAsFactors = TRUE)
++
++taxa_summary_raw <- import("../data/raw/publication_data/model_performance.xlsx",  sheet = "TestObjects Taxon Performance", stringsAsFactors = TRUE)
++
 +# REPRODUCTION: the archived biomass_data.xlsx holds one prepared sheet
-+# (zuordnung_id, location, biomass_total, year, size, biomass_size, abundance)
-+# instead of the two raw sheets read here originally.
++# (zuordnung_id, size, biomass_size) instead of the two raw sheets read here originally.
 +#bm2024 <- import("../data/raw/publication_data/biomass_data.xlsx", sheet = 1, skip = 2)
 +#bm_2023 <- import("../data/raw/publication_data/biomass_data.xlsx", sheet = 2, skip = 3)
 +biomass_raw <- import("../data/raw/publication_data/biomass_data.xlsx", sheet = 1)
  ```
  
  
-@@ -272,7 +276,9 @@
+@@ -110,7 +115,7 @@
+ ```{r echo=FALSE, message=FALSE, warning=FALSE}
+ temp <- results_raw %>% 
+   mutate(count = 1) %>% 
+-  group_by(location, year, month, day, Groessenfraktion) %>% 
++  group_by(location, year, day_of_year, Groessenfraktion) %>%  # REPRODUCTION: day_of_year instead of month, day
+   dplyr::summarise(sum_count = sum(count)) #basst
+ 
+ results_prep <- results_raw %>% 
+@@ -124,7 +129,7 @@
+   )) %>% 
+   filter(!is.na(order)) %>% 
+   unite("species", c(species_name, size), remove = F, sep = "#") %>% 
+-  mutate(date = make_date(year, month, day),
++  mutate(date = make_date(year) + day_of_year - 1,  # REPRODUCTION: archive has day_of_year instead of month, day
+          day_of_year = yday(date),
+          species = as.factor(species)) %>% 
+   unite("unit", c(location, year, day_of_year), remove = F, sep = "#") %>% 
+@@ -172,7 +177,7 @@
+ 
+ # Overall NA summary
+ results_prep %>%
+-  dplyr::summarize(across(all_of(14:26),
++  dplyr::summarize(across(c(order, family),  # REPRODUCTION: ranks kept in the archive
+                    ~ mean(is.na(.)) * 100,
+                    .names = "{.col}")) %>%
+   pivot_longer(cols = everything(), names_to = "Column", values_to = "NA_Percentage") %>% 
+@@ -187,12 +192,12 @@
+ 
+ results_prep %>%
+   group_by(size) %>%
+-  dplyr::summarize(across(all_of(14:26),
++  dplyr::summarize(across(c(order, family),  # REPRODUCTION: ranks kept in the archive
+                    ~ sum(is.na(.)),
+                    .names = "{.col}")) %>%
+   pivot_longer(cols = -size, names_to = "Column", values_to = "NA_Count") %>%
+   left_join(results_prep %>%
+-  dplyr::summarize(across(all_of(14:26),
++  dplyr::summarize(across(c(order, family),  # REPRODUCTION: ranks kept in the archive
+                    ~ sum(is.na(.)),
+                    .names = "{.col}")) %>%
+   pivot_longer(cols = everything(), names_to = "Column", values_to = "Total_NA"), by = "Column") %>%
+@@ -200,7 +205,7 @@
+   dplyr::select(size, Column, NA_Count, Total_NA, Percentage_Contribution) %>% 
+   mutate(Percentage_Contribution = round(Percentage_Contribution, 3)) %>% 
+   left_join(results_prep %>%
+-  dplyr::summarize(across(all_of(14:26),
++  dplyr::summarize(across(c(order, family),  # REPRODUCTION: ranks kept in the archive
+                    ~ mean(is.na(.)) * 100,
+                    .names = "{.col}")) %>%
+   pivot_longer(cols = everything(), names_to = "Column", values_to = "Total_NA_Percentage") %>% 
+@@ -272,7 +277,11 @@
  ```
  
  ## Environmental Data
 -```{r dataframe environmental preparation, echo=FALSE, fig.height=4, fig.width=6, message=FALSE, warning=FALSE, eval=FALSE}
 +```{r dataframe environmental preparation, echo=FALSE, fig.height=4, fig.width=6, message=FALSE, warning=FALSE, eval=TRUE}
-+# REPRODUCTION: was eval=FALSE; the archive holds no climate file and the
-+# later chunks need climate_data/env_prep, so SPARTACUS is queried again.
++# REPRODUCTION: was eval=FALSE. The archive holds no coordinates, so the SPARTACUS
++# v2.1 query below is skipped; climate_data.xlsx holds the daily RR, TN, TX it
++# returned for each site and sampling day (reference run of 2026-10-11).
++if (FALSE) {
  library(httr)
  library(jsonlite)
  library(openxlsx)
-@@ -292,7 +298,7 @@
+@@ -348,10 +357,19 @@
+   rename(location = site_id)
  
- start_date <- "2023-01-01"
- end_date   <- "2024-12-31"
--params     <- "RR,TN,TX"
-+spartacus_params <- "RR,TN,TX"  # REPRODUCTION: renamed, "params" holds the render parameters
- base_url   <- "https://dataset.api.hub.geosphere.at/v1/timeseries/historical/spartacus-v2-1d-1km"
+ str(climate_data)
++}
++climate_data <- import("../data/raw/publication_data/climate_data.xlsx", sheet = 1) %>% 
++  mutate(date = make_date(year) + day_of_year - 1) %>% 
++  dplyr::select(location, date, RR, TN, TX) %>% 
++  mutate(across(is.character, as.factor))
++str(climate_data)
  
- all_data <- data.frame()
-@@ -304,7 +310,7 @@
-   
-   url_call <- paste0(
-     base_url,
--    "?parameters=", params,
-+    "?parameters=", spartacus_params,
-     "&lat_lon=", lat, ",", lon,
-     "&start=",    start_date,
-     "&end=",      end_date
-@@ -465,41 +471,51 @@
+ ## Env data
+ temp <- results_prep %>% 
+-  dplyr::select(3:9, 12:14, 27:28, 31:32) %>% 
++  # REPRODUCTION: by name (was 3:9, 12:14, 27:28, 31:32 of the full sheet);
++  # month, day and the coordinates are not in the archive
++  dplyr::select(`unit#size`, unit, location, year, zuordnung_id, size,
++                Hecken, Wildblumensaat, date, day_of_year) %>% 
+   #dplyr::select(-species_name) %>% 
+   distinct() 
+ 
+@@ -465,41 +483,47 @@
  
  ## biomass data
  ```{r}
@@ -120,18 +185,43 @@
 +#  rename(location = Ort) %>% 
 +#  pivot_longer(3:9, values_to = "biomass_size", names_to = "size") %>% 
 +# The archived sheet already is this long format (one row per sample x size
-+# fraction, 2024 size '10' merged into '7', NA -> 0) joined with abundance.
-+# Drop the joined abundance and the abundance-only rows, and restore the
-+# original codes (size 'k1', year as character), then continue unchanged.
++# fraction with a weight, 2024 size '10' merged into '7', NA -> 0); restore
++# the original size code 'k1', then continue unchanged.
 +biomass_prep <- biomass_raw %>% 
-+  dplyr::select(-abundance) %>% 
-+  filter(!is.na(biomass_size)) %>% 
-+  mutate(size = case_when(size == 0.1 ~ "k1", TRUE ~ as.character(size)),
-+         year = as.character(year)) %>% 
++  mutate(size = case_when(size == 0.1 ~ "k1", TRUE ~ as.character(size))) %>% 
    full_join(results_raw %>% 
                dplyr::select(zuordnung_id, is_valid) %>% 
                distinct()) %>% 
-@@ -2177,7 +2193,12 @@
+@@ -994,9 +1018,9 @@
+   left_join(env_prep_size ) %>% 
+   mutate(
+     treatment = factor(treatment, levels = c("control", "eco")),
+-    site = as.factor(site),
++    site = as.factor(site)
+     #national_park = as.factor(national_park),
+-    day = as.factor(day)
++    # REPRODUCTION: day (calendar day, in no model) is not in the archive
+   ) %>% 
+   filter(Order.q == 1) %>% 
+   mutate(yday = as.numeric(lubridate::yday(date))) %>% 
+@@ -1965,13 +1989,13 @@
+ # GAUSSIAN
+ 
+ bm_mod <- biomass_prep %>%
+-  dplyr::select(-location, -year) %>% 
++  # REPRODUCTION: location and year are not in the archived biomass sheet
+   full_join(env_prep, by = "zuordnung_id") %>% 
+   mutate(
+     treatment = factor(treatment, levels = c("control", "eco")),
+-    site = as.factor(site),
++    site = as.factor(site)
+     #national_park = as.factor(national_park),
+-    day = as.factor(day)
++    # REPRODUCTION: day (calendar day, in no model) is not in the archive
+   ) %>% 
+   #filter(order == 1) %>% 
+   mutate(yday = as.numeric(lubridate::yday(date))) %>% 
+@@ -2177,7 +2201,12 @@
  # marginal means bar plot
  # Park × treatment EMMs
  #summary(best_mod)
@@ -144,7 +234,7 @@
  df2  <- as.data.frame(emm2)
  
  emm_bar <- ggplot(df2, aes(x = treatment, y = response, fill = treatment)) +
-@@ -3568,8 +3589,14 @@
+@@ -3568,8 +3597,14 @@
  
  # 1) Read PNG into a rasterGrob
  png_path <- "path_fig_20250819.png"
