@@ -1,0 +1,161 @@
+--- a/Data_Analysis.Rmd
++++ b/Data_Analysis.Rmd
+@@ -100,8 +100,12 @@
+ 
+ taxa_summary_raw <- import("../data/raw/publication_data/model_performance.xlsx",  sheet = 3, stringsAsFactors = TRUE)
+ 
+-bm2024 <- import("../data/raw/publication_data/biomass_data.xlsx", sheet = 1, skip = 2)
+-bm_2023 <- import("../data/raw/publication_data/biomass_data.xlsx", sheet = 2, skip = 3)
++# REPRODUCTION: the archived biomass_data.xlsx holds one prepared sheet
++# (zuordnung_id, location, biomass_total, year, size, biomass_size, abundance)
++# instead of the two raw sheets read here originally.
++#bm2024 <- import("../data/raw/publication_data/biomass_data.xlsx", sheet = 1, skip = 2)
++#bm_2023 <- import("../data/raw/publication_data/biomass_data.xlsx", sheet = 2, skip = 3)
++biomass_raw <- import("../data/raw/publication_data/biomass_data.xlsx", sheet = 1)
+ ```
+ 
+ 
+@@ -272,7 +276,9 @@
+ ```
+ 
+ ## Environmental Data
+-```{r dataframe environmental preparation, echo=FALSE, fig.height=4, fig.width=6, message=FALSE, warning=FALSE, eval=FALSE}
++```{r dataframe environmental preparation, echo=FALSE, fig.height=4, fig.width=6, message=FALSE, warning=FALSE, eval=TRUE}
++# REPRODUCTION: was eval=FALSE; the archive holds no climate file and the
++# later chunks need climate_data/env_prep, so SPARTACUS is queried again.
+ library(httr)
+ library(jsonlite)
+ library(openxlsx)
+@@ -292,7 +298,7 @@
+ 
+ start_date <- "2023-01-01"
+ end_date   <- "2024-12-31"
+-params     <- "RR,TN,TX"
++spartacus_params <- "RR,TN,TX"  # REPRODUCTION: renamed, "params" holds the render parameters
+ base_url   <- "https://dataset.api.hub.geosphere.at/v1/timeseries/historical/spartacus-v2-1d-1km"
+ 
+ all_data <- data.frame()
+@@ -304,7 +310,7 @@
+   
+   url_call <- paste0(
+     base_url,
+-    "?parameters=", params,
++    "?parameters=", spartacus_params,
+     "&lat_lon=", lat, ",", lon,
+     "&start=",    start_date,
+     "&end=",      end_date
+@@ -465,41 +471,51 @@
+ 
+ ## biomass data
+ ```{r}
+-biomass_prep <- bm2024 %>% 
+-  dplyr::select(-c(3, 13)) %>% 
+-  drop_na(ID) %>% 
+-  rename(biomass_total = 12,
+-         zuordnung_id = ID) %>%
+-    dplyr::select(-Datum) %>% 
+-  mutate(year = "2024") %>% 
+-  mutate(
+-    `7` = rowSums( 
+-      dplyr::select(., `10`, `7`),    # grab columns named “10” and “7”
+-      na.rm = TRUE             # treat any NA as 0
+-    )
+-  ) %>% 
+-  relocate(zuordnung_id, Ort, `7`) %>% 
+-  mutate(across(everything(), ~ replace_na(.x, 0))) %>%
+-  dplyr::select(-`10`) %>% 
+-  full_join(
+-     bm_2023 %>%
+-   dplyr::select(-c(1, 13:last_col())) %>% 
+-    rename(biomass_total = 11,
+-         zuordnung_id = `ID neu`,
+-         "7" = 4,
+-         "5" = 5,
+-         "3" = 6,
+-         "2" = 7,
+-         "1.5" = 8,
+-         "1" = 9,
+-         "k1" = 10) %>% 
+-    dplyr::select(-Datum) %>% 
+-   mutate(year = "2023") %>% 
+-  mutate(across(everything(), ~ replace_na(.x, 0)))
+-    
+-  ) %>% 
+-  rename(location = Ort) %>% 
+-  pivot_longer(3:9, values_to = "biomass_size", names_to = "size") %>% 
++# REPRODUCTION: original preparation of the two raw sheets, kept for reference;
++#biomass_prep <- bm2024 %>% 
++#  dplyr::select(-c(3, 13)) %>% 
++#  drop_na(ID) %>% 
++#  rename(biomass_total = 12,
++#         zuordnung_id = ID) %>%
++#    dplyr::select(-Datum) %>% 
++#  mutate(year = "2024") %>% 
++#  mutate(
++#    `7` = rowSums( 
++#      dplyr::select(., `10`, `7`),    # grab columns named “10” and “7”
++#      na.rm = TRUE             # treat any NA as 0
++#    )
++#  ) %>% 
++#  relocate(zuordnung_id, Ort, `7`) %>% 
++#  mutate(across(everything(), ~ replace_na(.x, 0))) %>%
++#  dplyr::select(-`10`) %>% 
++#  full_join(
++#     bm_2023 %>%
++#   dplyr::select(-c(1, 13:last_col())) %>% 
++#    rename(biomass_total = 11,
++#         zuordnung_id = `ID neu`,
++#         "7" = 4,
++#         "5" = 5,
++#         "3" = 6,
++#         "2" = 7,
++#         "1.5" = 8,
++#         "1" = 9,
++#         "k1" = 10) %>% 
++#    dplyr::select(-Datum) %>% 
++#   mutate(year = "2023") %>% 
++#  mutate(across(everything(), ~ replace_na(.x, 0)))
++#    
++#  ) %>% 
++#  rename(location = Ort) %>% 
++#  pivot_longer(3:9, values_to = "biomass_size", names_to = "size") %>% 
++# The archived sheet already is this long format (one row per sample x size
++# fraction, 2024 size '10' merged into '7', NA -> 0) joined with abundance.
++# Drop the joined abundance and the abundance-only rows, and restore the
++# original codes (size 'k1', year as character), then continue unchanged.
++biomass_prep <- biomass_raw %>% 
++  dplyr::select(-abundance) %>% 
++  filter(!is.na(biomass_size)) %>% 
++  mutate(size = case_when(size == 0.1 ~ "k1", TRUE ~ as.character(size)),
++         year = as.character(year)) %>% 
+   full_join(results_raw %>% 
+               dplyr::select(zuordnung_id, is_valid) %>% 
+               distinct()) %>% 
+@@ -2177,7 +2193,12 @@
+ # marginal means bar plot
+ # Park × treatment EMMs
+ #summary(best_mod)
++# REPRODUCTION: glmmTMB 1.1.13 (renv.lock) gives emmeans asymptotic df also for
++# Gaussian mixed models (columns asymp.LCL/UCL); older glmmTMB used the
++# residual df for Gaussian models (lower.CL/upper.CL), which this plot expects.
++options(glmmTMB.df = "df.residual")
+ emm2 <- emmeans(best_mod, ~ treatment, type = "response")
++options(glmmTMB.df = NULL)
+ df2  <- as.data.frame(emm2)
+ 
+ emm_bar <- ggplot(df2, aes(x = treatment, y = response, fill = treatment)) +
+@@ -3568,8 +3589,14 @@
+ 
+ # 1) Read PNG into a rasterGrob
+ png_path <- "path_fig_20250819.png"
++# REPRODUCTION: the path diagram (panel h) is not in the archive; use a
++# labelled placeholder so panels a-g can be rebuilt.
++if (file.exists(png_path)) {
+ img       <- png::readPNG(png_path)
+ path_grob <- grid::rasterGrob(img, interpolate = TRUE)
++} else {
++path_grob <- grid::textGrob("panel h: path_fig_20250819.png\nnot in the archive")
++}
+ 
+ # 2) First row: size plot twice as wide, heatmap one share
+ row1 <- (size_combined_plot  | heatmap_plot) +

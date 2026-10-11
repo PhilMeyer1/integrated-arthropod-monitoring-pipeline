@@ -6,7 +6,7 @@ This repository contains the complete pipeline for processing arthropod specimen
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Python 3.8+](https://img.shields.io/badge/python-3.8+-blue.svg)](https://www.python.org/downloads/)
-[![DOI](https://zenodo.org/badge/1088692587.svg)](https://doi.org/10.5281/zenodo.17512686)
+[![Code DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.17661709.svg)](https://doi.org/10.5281/zenodo.17661709)
 
 ---
 
@@ -293,12 +293,13 @@ Contact corresponding author for full dataset access.
 If you use this pipeline, please cite:
 
 ```bibtex
-@article{Meyer2025,
+@article{Meyer2026,
   title={Integrated arthropod monitoring pipeline detects size-dependent responses},
   author={Meyer, Philipp and Scharnhorst, Victor and Lechner, Michael and
           Haslinger, Hanna and Gierus, Martin and Meimberg, Harald},
-  year={2025},
-  note={Manuscript in review}
+  journal={Scientific Reports},
+  note={Manuscript under revision},
+  year={2026}
 }
 ```
 
@@ -316,7 +317,7 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 - **Issues**: [GitHub Issues](https://github.com/PhilMeyer1/arthropod-classification-pipeline/issues)
 - **Documentation**: See `docs/` folder
-- **Publication**: Manuscript in review (link will be added upon publication)
+- **Publication**: Manuscript under revision at Scientific Reports (2026)
 
 ## Contributing
 

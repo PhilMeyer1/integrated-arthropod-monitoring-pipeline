@@ -143,7 +143,8 @@ If you use these models in your research, please cite:
   author={Meyer, Philipp and Scharnhorst, Victor and Lechner, Michael and
           Haslinger, Hanna and Gierus, Martin and Meimberg, Harald},
   year={2025},
-  note={Manuscript in review}
+  journal={Scientific Reports},
+  note={Manuscript under revision (2026)}
 }
 ```
 

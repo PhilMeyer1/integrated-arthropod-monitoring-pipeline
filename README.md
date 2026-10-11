@@ -5,7 +5,7 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Python 3.8+](https://img.shields.io/badge/python-3.8+-blue.svg)](https://www.python.org/downloads/)
 [![R 4.2+](https://img.shields.io/badge/R-4.2+-blue.svg)](https://www.r-project.org/)
-[![Code DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.17661710.svg)](https://doi.org/10.5281/zenodo.17661710)
+[![Code DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.17661709.svg)](https://doi.org/10.5281/zenodo.17661709)
 [![Models DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.17661921.svg)](https://doi.org/10.5281/zenodo.17661921)
 
 ---
@@ -14,13 +14,15 @@
 
 This repository provides a complete, reproducible pipeline for automated arthropod detection, segmentation, and hierarchical classification from composite images. The system integrates size-based sorting with deep learning (YOLOv8/YOLOv11) to enable comprehensive biodiversity monitoring while preserving specimens for downstream analyses. Our integrated approach reveals size-dependent ecological responses that conventional monitoring methods miss.
 
-**Reference:** Meyer, P., Scharnhorst, V., Lechner, M., Haslinger, H., Gierus, M., & Meimberg, H. (2025). *Integrated arthropod monitoring pipeline detects size-dependent responses.*
+**Reference:** Meyer, P., Scharnhorst, V., Lechner, M., Haslinger, H., Gierus, M., & Meimberg, H. *Integrated arthropod monitoring pipeline detects size-dependent responses.* Manuscript under revision at *Scientific Reports* (2026).
+
+**Version 1.1.0 (Revision 1):** the main analysis excludes sample 180 (collected over two days instead of 24 hours); a sensitivity analysis repeats it with all 54 samples. What changed is listed in [RELEASE_NOTES_v1.1.0.md](RELEASE_NOTES_v1.1.0.md); how to run both analyses in [analysis/README.md](analysis/README.md).
 
 ---
 
 ## Key Findings
 
-Our integrated approach reveals:
+Our integrated approach reveals (figures as in the submitted version, 54 samples including sample 180; the main analysis of version 1.1.0 without sample 180 and the comparison of both are in Table S15, [`analysis/reproduction/tables/table_s15_sensitivity_sample180.yaml`](analysis/reproduction/tables/table_s15_sensitivity_sample180.yaml)):
 
 - **Small taxa (<2 mm) show strongest environmental response** (+8% abundance per mm decrease)
 - **Hedgerows increase arthropod abundance by 60%** (size-dependent effect)
@@ -59,7 +61,8 @@ python scripts/test_core_components.py  # Expect: 5/5 tests passed
 
 # Test statistical analysis
 cd ../analysis
-# Open scripts/Data_Analysis.Rmd in RStudio and knit
+# Open scripts/Data_Analysis.Rmd in RStudio and knit (main analysis without sample 180);
+# reproducible Docker run of the main and the sensitivity analysis: see analysis/README.md
 ```
 
 ### Running the Pipeline
@@ -133,7 +136,8 @@ The hierarchical classification models are not included in this public release b
 
 ### Complete Source Code
 All source code is archived on Zenodo:
-- **DOI**: [10.5281/zenodo.17661710](https://doi.org/10.5281/zenodo.17661710)
+- **DOI (all versions, resolves to the latest)**: [10.5281/zenodo.17661709](https://doi.org/10.5281/zenodo.17661709)
+- **Earlier version 1.0.0**: [10.5281/zenodo.17661710](https://doi.org/10.5281/zenodo.17661710)
 - **GitHub**: [github.com/PhilMeyer1/integrated-arthropod-monitoring-pipeline](https://github.com/PhilMeyer1/integrated-arthropod-monitoring-pipeline)
 
 ---
@@ -142,12 +146,13 @@ All source code is archived on Zenodo:
 
 ### Paper
 ```bibtex
-@article{Meyer2025,
+@article{Meyer2026,
   title={Integrated arthropod monitoring pipeline detects size-dependent responses},
   author={Meyer, Philipp and Scharnhorst, Victor and Lechner, Michael and
           Haslinger, Hanna and Gierus, Martin and Meimberg, Harald},
-  year={2025},
-  note={Manuscript in review}
+  journal={Scientific Reports},
+  note={Manuscript under revision},
+  year={2026}
 }
 ```
 
@@ -157,9 +162,10 @@ All source code is archived on Zenodo:
   author={Meyer, Philipp and Scharnhorst, Victor and Lechner, Michael and
           Haslinger, Hanna and Gierus, Martin and Meimberg, Harald},
   title={Integrated Arthropod Monitoring Pipeline - Source Code},
-  year={2025},
+  year={2026},
+  version={1.1.0},
   publisher={Zenodo},
-  doi={10.5281/zenodo.17661710},
+  doi={10.5281/zenodo.17661709},
   url={https://github.com/PhilMeyer1/integrated-arthropod-monitoring-pipeline}
 }
 ```
@@ -202,6 +208,6 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 ## Reproducibility Statement
 
-All analyses are fully reproducible using the code and data provided in this repository. The pipeline processes specimens from raw images to taxonomic classifications, and the statistical analysis scripts generate all figures and tables in the manuscript.
+All analyses are fully reproducible using the code and data provided in this repository. The pipeline processes specimens from raw images to taxonomic classifications, and the statistical analysis scripts generate the figures and tables of the manuscript (the path diagram, Fig. 3h, is not included; see RELEASE_NOTES_v1.1.0.md for known gaps).
 
-**Last Updated**: 2025-01-20
+**Last Updated**: 2026-10-11

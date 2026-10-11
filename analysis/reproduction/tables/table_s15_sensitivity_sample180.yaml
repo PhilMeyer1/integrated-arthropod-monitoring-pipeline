@@ -1,0 +1,36 @@
+title: "Sensitivity analysis: main results without and with sample 180."
+columns:
+  - name: "Quantity"
+    width: 5.5
+    align: left
+  - name: "Table"
+    width: 1.2
+    align: center
+  - name: "Main analysis (53 samples, without sample 180)"
+    width: 3.0
+    align: center
+  - name: "Sensitivity analysis (54 samples, with sample 180)"
+    width: 3.0
+    align: center
+data:
+  - ["Samples", "S3", "53", "54"]
+  - ["Sampling units per model (diversity and abundance / biomass)", "S4, S6, S7", "355 / 344", "362 / 351"]
+  - ["Taxa (family or order x size fraction)", "S12", "275", "277"]
+  - ["Abundance, hedgerow effect (%, P)", "S6", "+54.8 (0.063)", "+60.1 (0.046)"]
+  - ["Abundance, post-hoc contrast control - eco (P)", "S5", "0.252", "0.246"]
+  - ["Abundance, size x hedgerow interaction (P)", "S5, S6", "0.066", "0.032"]
+  - ["Abundance, interaction (% per mm decrease in body size)", "S6", "7.5", "8.7"]
+  - ["Diversity, hedgerow effect (%, P)", "S4", "+0.9 (0.870)", "+1.0 (0.863)"]
+  - ["Biomass, hedgerow effect (%, P)", "S7", "+26.2 (0.291)", "+26.8 (0.281)"]
+  - ["Temperature effect per °C (diversity / abundance / biomass, %)", "S4, S6, S7", "2.47 / 7.51 / 9.49", "2.48 / 7.75 / 9.68"]
+  - ["Diversity, day of year (P)", "S4", "0.121", "0.117"]
+  - ["PERMANOVA, hedgerow R² (%, P)", "S8", "2.42 (0.001)", "2.52 (0.001)"]
+  - ["PERMDISP, hedgerow (P)", "S9", "0.569", "0.785"]
+  - ["Beta diversity, total dissimilarity (P)", "S10", "0.051", "0.051"]
+  - ["Beta diversity, nestedness (P)", "S10", "0.110", "0.087"]
+  - ["Beta diversity, turnover (P)", "S10", "0.560", "0.710"]
+  - ["Beta dispersion, total / turnover / nestedness (P)", "S11", "0.282 / 0.285 / 0.544", "0.256 / 0.220 / 0.462"]
+  - ["Indicator taxa with P < 0.1 (of which control-associated)", "S12", "20 (1)", "18 (0)"]
+  - ["Mean body size of the indicator taxa (mm)", "S12", "2.62", "2.25"]
+note: "Sample 180 (site LA2, 2024) was collected over two days instead of 24 hours; the main analysis (Tables S4-S12, main text) excludes it, and this table repeats the key results with it. Percentages are 100 x (exp(b) - 1) of the model coefficients. P-values of permutation tests (S8, S10, S12) vary slightly between runs because of random permutations."
+keep_together: true
