@@ -1,18 +1,25 @@
 # Publication Data
 
-This directory contains the raw data underlying the manuscript figures and analyses, following best practices for data availability.
+This directory contains the data that `analysis/scripts/Data_Analysis.Rmd` reads to reproduce the results of the manuscript (version 1.1.0). The files are reduced to what the analysis needs: sites carry neutral codes, sampling dates are given as year and day of the year, and coordinates, object IDs and taxonomic ranks the analysis does not use are not included.
 
 ---
 
 ## Files Overview
 
-| File | Records | Size | Description |
-|------|---------|------|-------------|
-| `specimen_data.xlsx` | 46,012 specimens | 1.5 MB | Individual specimen classifications |
-| `biomass_data.xlsx` | 378 measurements | 23 KB | Biomass and abundance (54 samples × 7 size fractions) |
-| `model_performance.xlsx` | 73 taxa | 15 KB | Per-taxon classification performance |
+| File | Sheet(s) | Rows | Description |
+|------|----------|------|-------------|
+| `specimen_data.xlsx` | `Object List` | 40,090 specimens | Order and family of each specimen with an order in the 54 valid samples |
+| `biomass_data.xlsx` | `Sheet 1` | 371 size fractions | Biomass per sample and size fraction |
+| `model_performance.xlsx` | `TestObjects Model Performance`, `TestObjects Taxon Performance` | 57, 126 | Test-set performance per classification model and per taxon |
+| `climate_data.xlsx` | `Sheet 1` | 54 site-days | Daily precipitation and temperature per site and sampling day |
 
-**Total:** ~1.54 MB
+---
+
+## Coding
+
+- **Sites** (`location`): neutral codes `site_01`, `site_01 b`, `site_02` to `site_10` (eleven sampling locations). The codes are chosen so that sorting `site_date` (site code, `#`, date) in the analysis gives the same row order as before the recoding; the seeded permutation test of the indicator species analysis (Table S12) depends on that order.
+- **Samples** (`zuordnung_id`): the sample numbers used in the manuscript, unchanged (sample 180 is `180`). The number links `specimen_data.xlsx` and `biomass_data.xlsx`.
+- **Dates**: `year` and `day_of_year` (1 = 1 January). The analysis rebuilds the sampling date as `make_date(year) + day_of_year - 1` (applied by `analysis/reproduction/reproduction.patch`).
 
 ---
 
@@ -20,101 +27,51 @@ This directory contains the raw data underlying the manuscript figures and analy
 
 ### specimen_data.xlsx
 
-**Description:** Individual specimen classifications from the automated hierarchical classification pipeline
-
-**Records:** 46,012 specimens
+**Description:** Specimen classifications from the automated hierarchical classification pipeline, one row per specimen; only the 54 valid samples and only specimens with an order (the analysis drops the rest). Row order as in the full data file.
 
 **Columns:**
-- `specimen_id` - Unique specimen identifier
-- `sample_id` - Sample identifier (links to biomass_data.xlsx)
-- `size_fraction` - Size fraction category
-- `phylum` - Phylum-level classification
-- `class` - Class-level classification
+- `zuordnung_id` - Sample number (links to `biomass_data.xlsx`)
+- `location` - Site code (see Coding)
+- `year` - Sampling year (2023 or 2024)
+- `day_of_year` - Sampling day as day of the year
+- `Groessenfraktion` - Size fraction
 - `order` - Order-level classification
-- `family` - Family-level classification
-- `hedges_present (Eco Treatment)` - Ecological treatment (hedgerow presence)
-
-**Source:** Output from YOLOv11-based hierarchical classification pipeline
-
-**Corresponds to:**
-- Figure 2: Model performance across taxonomic levels
-- Figure 3: Classification accuracy and confidence distributions
-- Table S1: Complete specimen classifications
-- Supplementary Data
-
-**Usage:**
-```python
-import pandas as pd
-specimens = pd.read_excel('specimen_data.xlsx')
-print(f"Total specimens: {len(specimens)}")
-print(specimens.groupby('family').size())
-```
+- `family` - Family-level classification (empty if the specimen was not classified to family)
+- `Hecken` - Treatment: hedgerow present (`True`/`False`)
+- `Wildblumensaat` - Wildflower sowing (`True`/`False`)
+- `is_valid` - Sample valid (`True` in all rows)
 
 ---
 
 ### biomass_data.xlsx
 
-**Description:** Biomass and abundance data from field sampling, organized by sample and size fraction
-
-**Records:** 378 measurements (54 field samples × 7 size fractions)
+**Description:** Biomass per sample and size fraction (size fractions with a weight only)
 
 **Columns:**
-- `sample_id` - Unique sample identifier
-- `biomass_total` - Total biomass (mg)
-- `year` - Sampling year
-- `size` - Size fraction category
-- `biomass_size` - Biomass for specific size fraction (mg)
-- `abundance` - Specimen count
-
-**Source:** Field sampling and laboratory measurements
-
-**Corresponds to:**
-- Figure 4: Ecological analyses (biomass, abundance)
-- Manuscript Results section: Biodiversity patterns
-- Ecological treatment comparisons
-
-**Usage:**
-```python
-import pandas as pd
-biomass = pd.read_excel('biomass_data.xlsx')
-print(biomass.groupby('size')['biomass_total'].sum())
-```
+- `zuordnung_id` - Sample number (links to `specimen_data.xlsx`)
+- `size` - Size fraction
+- `biomass_size` - Biomass of the size fraction (mass after drying for 6 h at 56 °C)
 
 ---
 
 ### model_performance.xlsx
 
-**Description:** Per-taxon classification performance metrics from the hierarchical classification models
+**Description:** Classification performance on the test set, per classification model (sheet `TestObjects Model Performance`) and per taxon (sheet `TestObjects Taxon Performance`); unchanged from version 1.0.0
 
-**Records:** 73 taxa (families and orders)
+**Columns (both sheets, 15 each):** taxon or model ID, scientific name and rank, validation, training and test counts, average confidence, correct and incorrect classifications without and with the confidence threshold, `accuracy_without_threshold`, `threshold_for_accuracy`, `accuracy_with_threshold`, `objects_without_determination`
+
+---
+
+### climate_data.xlsx
+
+**Description:** Daily climate values for each site and sampling day from the gridded data set GeoSphere Austria SPARTACUS v2.1 (1 km), as queried for the reference run of version 1.1.0. The analysis reads this file instead of querying the API (the query needs the site coordinates, which are not archived).
 
 **Columns:**
-- `Actual_Scientific_Name` - Taxon scientific name
-- `Actual_Rank` - Taxonomic rank (order or family)
-- `val_taxon_count` - Validation set size
-- `train_taxon_count` - Training set size
-- `test_count` - Test set size
-- `average_confidence` - Mean confidence score
-- `correct_classifications` - Number of correct predictions
-- `incorrect_classifications` - Number of incorrect predictions
-- `accuracy_without_threshold` - Baseline accuracy (%)
-- `threshold_for_accuracy` - Calibrated confidence threshold
-
-**Source:** Model evaluation on test set (10% of data, see Methods)
-
-**Corresponds to:**
-- Figure 2a-c: Accuracy distributions across taxa
-- Table S3: Per-taxon thresholds and accuracies
-- Supplementary Methods: Threshold calibration procedure
-- Methods section: "Threshold Calculation"
-
-**Usage:**
-```python
-import pandas as pd
-performance = pd.read_excel('model_performance.xlsx')
-valid_taxa = performance[performance['accuracy_without_threshold'] >= 95]
-print(f"Taxa achieving ≥95% accuracy: {len(valid_taxa)}/{len(performance)}")
-```
+- `location` - Site code
+- `year`, `day_of_year` - Sampling day
+- `RR` - Daily precipitation sum (mm)
+- `TN` - Daily minimum air temperature (°C)
+- `TX` - Daily maximum air temperature (°C)
 
 ---
 
@@ -196,5 +153,5 @@ For questions about the data:
 
 ---
 
-**Last Updated:** 2025-11-11
-**Version:** 1.0
+**Last Updated:** 2026-10-11
+**Version:** 1.1.0

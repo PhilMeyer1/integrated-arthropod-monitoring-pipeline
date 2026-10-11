@@ -1,4 +1,4 @@
-# Data Analysis - Hecken für Hühner
+# Data Analysis
 
 Statistical data analysis for the publication "Cheaper, Faster, More Comprehensive: AI-based image analysis pipeline for biodiversity surveys".
 
@@ -112,10 +112,12 @@ renv::snapshot()
 
 ## Data Sources
 
-The raw data is located in `data/raw/publication_data/`:
-- `specimen_data.xlsx` - Specimen-level data (46,012 specimens)
-- `biomass_data.xlsx` - Biomass measurements (378 records from 54 samples × 7 size fractions)
-- `model_performance.xlsx` - Model performance metrics (73 taxa)
+The raw data is located in `data/raw/publication_data/`, reduced to what the analysis reads
+(columns and coding: `data/raw/publication_data/README.md`):
+- `specimen_data.xlsx` - Specimen-level data (40,090 specimens of the 54 valid samples; site codes, year and day of the year)
+- `biomass_data.xlsx` - Biomass per sample and size fraction (371 weighed size fractions)
+- `model_performance.xlsx` - Test-set performance per classification model and per taxon (two sheets)
+- `climate_data.xlsx` - Daily precipitation and temperature per site and sampling day (GeoSphere SPARTACUS v2.1)
 
 ## Analysis
 
@@ -135,7 +137,7 @@ The main analysis is performed in `scripts/Data_Analysis.Rmd`.
 
 ## Main analysis and sensitivity analysis (version 1.1.0)
 
-Sample 180 (site LA2, 2024) was collected over two days instead of 24 hours. Since version 1.1.0
+Sample 180 was collected over two days instead of 24 hours. Since version 1.1.0
 the main analysis excludes it (53 samples); a sensitivity analysis repeats the analysis with all
 54 samples, as in the submitted version. Both come from the same `scripts/Data_Analysis.Rmd`,
 controlled by one parameter in its YAML header:
@@ -174,7 +176,7 @@ bash analysis/reproduction/run_all.sh <OUT>     # OUT outside the repository
 | `reproduction/Dockerfile` | `rocker/r-ver:4.5.0` plus system libraries, pandoc and patch |
 | `reproduction/restore.R` | restores `renv.lock` into the volume (CRAN snapshot 2025-11-19 for 15 packages the Rmd loads but the lockfile does not pin) |
 | `reproduction/run.sh` | renders the Rmd in a scratch copy inside the container, with `EXCLUDE_SAMPLE` as the parameter |
-| `reproduction/reproduction.patch` | changes applied to the scratch copy only, each marked `# REPRODUCTION:`: reads the prepared sheet of `biomass_data.xlsx` (the Rmd expects two raw sheets), queries the SPARTACUS climate API (chunk set to `eval=FALSE` in the Rmd), keeps the confidence-interval columns of `emmeans` for glmmTMB 1.1.13, uses a placeholder for the path diagram (Fig. 3h, not in the archive), and renames the Rmd variable `params` of the climate query |
+| `reproduction/reproduction.patch` | changes applied to the scratch copy only, each marked `# REPRODUCTION:`: adapts the Rmd to the reduced data files (sheets and columns selected by name instead of position, date rebuilt from year and day of the year), reads the prepared sheet of `biomass_data.xlsx` (the Rmd expects two raw sheets), reads the climate values from `climate_data.xlsx` (the SPARTACUS query of the Rmd needs the site coordinates, which are not archived; it stays switched off), keeps the confidence-interval columns of `emmeans` for glmmTMB 1.1.13, and uses a placeholder for the path diagram (Fig. 3h, not in the archive) |
 | `reproduction/key_numbers.R` | reads the key numbers of a finished run from its `session.RData` into `key_numbers.csv` |
 | `reproduction/make_table_s14.py` | Table S14 (orders and families of the 53 samples) from `specimen_data.xlsx` |
 | `reproduction/make_table_s15.py` | Table S15 (main analysis next to the sensitivity analysis) from the `key_numbers.csv` of both runs |
@@ -182,8 +184,8 @@ bash analysis/reproduction/run_all.sh <OUT>     # OUT outside the repository
 
 `run_all.sh` writes `<OUT>/main_without_180/` and `<OUT>/sensitivity_with_180/` (rendered report,
 Word tables, figures, `output/tables/*.csv`, `session.RData`, `sessionInfo.txt`,
-`key_numbers.csv`). It needs network access: the package restore downloads from a CRAN snapshot,
-and the climate chunk queries the GeoSphere SPARTACUS API. A run takes a few minutes per
+`key_numbers.csv`). It needs network access only for the package restore (CRAN snapshot); the renders
+read the climate values from `climate_data.xlsx`. A run takes a few minutes per
 analysis (about 2 to 3 minutes on the authors' machine) plus the one-time package restore. Clean up afterwards with
 `docker rmi iamp-analysis-r:4.5.0` and `docker volume rm iamp-analysis-rlib`.
 

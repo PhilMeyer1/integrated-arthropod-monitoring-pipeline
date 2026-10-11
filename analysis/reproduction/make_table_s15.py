@@ -40,7 +40,7 @@ columns:
     align: center
 data:
 '''
-TAIL = ('note: "Sample 180 (site LA2, 2024) was collected over two days instead of 24 hours; the '
+TAIL = ('note: "Sample 180 was collected over two days instead of 24 hours; the '
         'main analysis (Tables S4-S12, main text) excludes it, and this table repeats the key '
         'results with it. Percentages are 100 x (exp(b) - 1) '
         'of the model coefficients. P-values of permutation tests (S8, S10, S12) vary slightly '

@@ -130,7 +130,7 @@ results_prep <- results_raw %>%
   unite("unit", c(location, year, day_of_year), remove = F, sep = "#") %>% 
   unite("unit#size", c(unit, size), remove = F, sep = "#") #%>% 
   
-  #filter(!unit %in% c("Zissersdorf#2023#124", "Zissersdorf#2023#204", "Zissersdorf#2024#170"))
+  #filter(!unit %in% c("site_10#2023#124", "site_10#2023#204", "site_10#2024#170"))
 
 results_prep$Hecken <- factor(results_prep$Hecken, levels = c("True", "False"))
 results_prep$Wildblumensaat <- factor(results_prep$Wildblumensaat, levels = c("True", "False"))
@@ -380,8 +380,8 @@ env_prep_size <- inner_join(climate_data, temp) %>%
   mutate(site = location) %>% 
   unite("site_date", c(site, date), remove = F, sep = "#")#%>% 
   #mutate(location = as.factor(case_when(
-  #  str_detect(location, "Fronsburg") ~ "Fronsburg",
-  #  str_detect(location, "Kremsmünster") ~ "Kremsmünster",
+  #  str_detect(location, "<farm A>") ~ "<farm A>",
+  #  str_detect(location, "<farm B>") ~ "<farm B>",
   #  TRUE ~ location
   #))) 
 levels(env_prep_size$location)
@@ -415,8 +415,8 @@ env_prep <- inner_join(climate_data, temp) %>%
   mutate(yday = day_of_year) %>% 
   arrange(site_date) #%>% 
   #mutate(location = as.factor(case_when(
-  #  str_detect(location, "Fronsburg") ~ "Fronsburg",
-  #  str_detect(location, "Kremsmünster") ~ "Kremsmünster",
+  #  str_detect(location, "<farm A>") ~ "<farm A>",
+  #  str_detect(location, "<farm B>") ~ "<farm B>",
   #  TRUE ~ location
   #))) 
 

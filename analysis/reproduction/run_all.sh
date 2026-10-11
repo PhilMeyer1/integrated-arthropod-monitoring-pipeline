@@ -7,8 +7,8 @@
 #
 # Usage (bash, from anywhere; OUT should lie outside the repository):
 #   bash analysis/reproduction/run_all.sh <OUT>
-# Needs Docker and network access (CRAN snapshot for the package restore, GeoSphere
-# SPARTACUS API in the climate chunk). IMG and VOL may be overridden.
+# Needs Docker and network access (CRAN snapshot for the package restore only; the
+# climate values come from climate_data.xlsx). IMG and VOL may be overridden.
 # Clean up afterwards: docker rmi "$IMG"; docker volume rm "$VOL".
 set -euo pipefail
 OUT=${1:?usage: run_all.sh <OUT>}

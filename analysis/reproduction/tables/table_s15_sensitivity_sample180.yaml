@@ -32,5 +32,5 @@ data:
   - ["Beta dispersion, total / turnover / nestedness (P)", "S11", "0.282 / 0.285 / 0.544", "0.256 / 0.220 / 0.462"]
   - ["Indicator taxa with P < 0.1 (of which control-associated)", "S12", "20 (1)", "18 (0)"]
   - ["Mean body size of the indicator taxa (mm)", "S12", "2.62", "2.25"]
-note: "Sample 180 (site LA2, 2024) was collected over two days instead of 24 hours; the main analysis (Tables S4-S12, main text) excludes it, and this table repeats the key results with it. Percentages are 100 x (exp(b) - 1) of the model coefficients. P-values of permutation tests (S8, S10, S12) vary slightly between runs because of random permutations."
+note: "Sample 180 was collected over two days instead of 24 hours; the main analysis (Tables S4-S12, main text) excludes it, and this table repeats the key results with it. Percentages are 100 x (exp(b) - 1) of the model coefficients. P-values of permutation tests (S8, S10, S12) vary slightly between runs because of random permutations."
 keep_together: true
