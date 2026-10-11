@@ -1,14 +1,14 @@
 
 Package: ArthropodMonitoringAnalysis
 Title: Statistical Analysis for Integrated Arthropod Monitoring Pipeline
-Version: 1.0.0
+Version: 1.1.0
 Authors@R: person("Victor", "Scharnhorst",
                   role = c("aut", "cre"),
                   email = "victor.scharnhorst@example.com")
 Description: R analysis scripts and statistical models for arthropod biodiversity
     monitoring data. This package contains the analysis code for the manuscript
     "Integrated arthropod monitoring pipeline detects size-dependent responses"
-    (manuscript in review, 2025).
+    (manuscript under revision at Scientific Reports, 2026).
 License: MIT + file ../LICENSE
 Encoding: UTF-8
 Depends:

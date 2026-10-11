@@ -3,7 +3,8 @@
   "creators": [
     {
       "name": "Meyer, Philipp",
-      "affiliation": "University of Natural Resources and Life Sciences (BOKU), Vienna, Austria"
+      "affiliation": "University of Natural Resources and Life Sciences (BOKU), Vienna, Austria",
+      "orcid": "0000-0002-9795-7794"
     },
     {
       "name": "Scharnhorst, Victor",
@@ -26,7 +27,7 @@
       "affiliation": "University of Natural Resources and Life Sciences (BOKU), Vienna, Austria"
     }
   ],
-  "description": "A comprehensive pipeline for automated detection, segmentation, and classification of arthropod specimens from composite images. This software implements the methods described in 'Integrated arthropod monitoring pipeline detects size-dependent responses' (manuscript in review, 2025).",
+  "description": "A comprehensive pipeline for automated detection, segmentation, and classification of arthropod specimens from composite images, together with the statistical analysis code and the publication data. This software implements the methods described in 'Integrated arthropod monitoring pipeline detects size-dependent responses' (manuscript under revision at Scientific Reports (2026)). Version 1.1.0 (Revision 1) reports the main analysis without sample 180 and adds a sensitivity analysis with it; see RELEASE_NOTES_v1.1.0.md.",
   "keywords": [
     "arthropod monitoring",
     "computer vision",
@@ -52,7 +53,7 @@
     }
   ],
   "references": [
-    "Meyer, P., Scharnhorst, V., Lechner, M., Haslinger, H., Gierus, M., & Meimberg, H. (2025). Integrated arthropod monitoring pipeline detects size-dependent responses. Manuscript in review."
+    "Meyer, P., Scharnhorst, V., Lechner, M., Haslinger, H., Gierus, M., & Meimberg, H. Integrated arthropod monitoring pipeline detects size-dependent responses. Manuscript under revision at Scientific Reports (2026)."
   ],
-  "version": "1.0.0"
+  "version": "1.1.0"
 }

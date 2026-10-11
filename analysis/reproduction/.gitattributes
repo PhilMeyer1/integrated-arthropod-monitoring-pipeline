@@ -1,0 +1,5 @@
+# Run inside the Linux container: keep LF on Windows checkouts as well.
+*.sh text eol=lf
+*.patch text eol=lf
+*.R text eol=lf
+Dockerfile text eol=lf

@@ -157,9 +157,9 @@ print(f"Taxa achieving ≥95% accuracy: {len(valid_taxa)}/{len(performance)}")
 
 If you use this data, please cite:
 
-> Meyer, P., Scharnhorst, V., Lechner, M., Haslinger, H., Gierus, M., & Meimberg, H. (2025). Integrated arthropod monitoring pipeline detects size-dependent responses. Manuscript in review.
+> Meyer, P., Scharnhorst, V., Lechner, M., Haslinger, H., Gierus, M., & Meimberg, H. Integrated arthropod monitoring pipeline detects size-dependent responses. Manuscript under revision at Scientific Reports (2026).
 
-**Data Repository:** Zenodo DOI: 10.5281/zenodo.17512687
+**Data Repository:** Zenodo DOI (all versions): 10.5281/zenodo.17661709; version 1.0.0: 10.5281/zenodo.17661710
 
 ---
 

@@ -130,8 +130,74 @@ The main analysis is performed in `scripts/Data_Analysis.Rmd`.
 ## Usage
 
 1. Open `data-analysis.Rproj` in RStudio
-2. Run `scripts/Data_Analysis.Rmd` to perform the analysis
+2. Run `scripts/Data_Analysis.Rmd` to perform the analysis (main analysis without sample 180; sensitivity analysis: see below)
 3. Results will be generated in the `output/` directory
+
+## Main analysis and sensitivity analysis (version 1.1.0)
+
+Sample 180 (site LA2, 2024) was collected over two days instead of 24 hours. Since version 1.1.0
+the main analysis excludes it (53 samples); a sensitivity analysis repeats the analysis with all
+54 samples, as in the submitted version. Both come from the same `scripts/Data_Analysis.Rmd`,
+controlled by one parameter in its YAML header:
+
+```yaml
+params:
+  exclude_sample: "180"   # zuordnung_id of the excluded sample; "" = keep all samples
+```
+
+The parameter removes the specimens of that sample right after `specimen_data.xlsx` is read; with
+an empty value the imported data stay unchanged.
+
+```r
+# main analysis (53 samples, default)
+rmarkdown::render("scripts/Data_Analysis.Rmd")
+# sensitivity analysis (54 samples, sample 180 included)
+rmarkdown::render("scripts/Data_Analysis.Rmd", params = list(exclude_sample = ""),
+                  output_file = "Data_Analysis_sensitivity_with_180.html")
+```
+
+Both renders write their tables and figures into the same folders (`scripts/`, `output/`); run them
+one after the other into separate copies of `analysis/`, or use the Docker run below, which keeps
+each run in its own folder.
+
+## Reproduction in Docker
+
+`reproduction/` renders both analyses in Docker (R 4.5.0, package versions of `renv.lock`,
+restored into a Docker volume; nothing is installed on the host):
+
+```bash
+bash analysis/reproduction/run_all.sh <OUT>     # OUT outside the repository
+```
+
+| File | Purpose |
+|---|---|
+| `reproduction/Dockerfile` | `rocker/r-ver:4.5.0` plus system libraries, pandoc and patch |
+| `reproduction/restore.R` | restores `renv.lock` into the volume (CRAN snapshot 2025-11-19 for 15 packages the Rmd loads but the lockfile does not pin) |
+| `reproduction/run.sh` | renders the Rmd in a scratch copy inside the container, with `EXCLUDE_SAMPLE` as the parameter |
+| `reproduction/reproduction.patch` | changes applied to the scratch copy only, each marked `# REPRODUCTION:`: reads the prepared sheet of `biomass_data.xlsx` (the Rmd expects two raw sheets), queries the SPARTACUS climate API (chunk set to `eval=FALSE` in the Rmd), keeps the confidence-interval columns of `emmeans` for glmmTMB 1.1.13, uses a placeholder for the path diagram (Fig. 3h, not in the archive), and renames the Rmd variable `params` of the climate query |
+| `reproduction/key_numbers.R` | reads the key numbers of a finished run from its `session.RData` into `key_numbers.csv` |
+| `reproduction/make_table_s14.py` | Table S14 (orders and families of the 53 samples) from `specimen_data.xlsx` |
+| `reproduction/make_table_s15.py` | Table S15 (main analysis next to the sensitivity analysis) from the `key_numbers.csv` of both runs |
+| `reproduction/tables/` | the generated Tables S14 and S15 |
+
+`run_all.sh` writes `<OUT>/main_without_180/` and `<OUT>/sensitivity_with_180/` (rendered report,
+Word tables, figures, `output/tables/*.csv`, `session.RData`, `sessionInfo.txt`,
+`key_numbers.csv`). It needs network access: the package restore downloads from a CRAN snapshot,
+and the climate chunk queries the GeoSphere SPARTACUS API. A run takes a few minutes per
+analysis (about 2 to 3 minutes on the authors' machine) plus the one-time package restore. Clean up afterwards with
+`docker rmi iamp-analysis-r:4.5.0` and `docker volume rm iamp-analysis-rlib`.
+
+Tables S14 and S15 (Python 3.9 or newer, standard library only; from the repository root):
+
+```bash
+python analysis/reproduction/make_table_s14.py --check
+python analysis/reproduction/make_table_s15.py <OUT>/main_without_180 <OUT>/sensitivity_with_180 --check
+```
+
+`--check` compares the generated table with the file in `reproduction/tables/` and exits with 1 on
+any difference; without `--check` the file is written. Permutation P-values of Tables S8 to S11
+vary slightly between runs because those permutation tests use no fixed seed (the indicator
+analysis, Table S12, sets one), so a fresh run may differ from Table S15 in those cells.
 
 ## Related Repository
 

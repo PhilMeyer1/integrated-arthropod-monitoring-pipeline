@@ -5,6 +5,8 @@ date: "`r Sys.Date()`"
 output:
   html_document:
     css: styles.css
+params:
+  exclude_sample: "180"
 ---
 
 ```{r setup, include=FALSE}
@@ -89,6 +91,10 @@ treatment_palette <- c(
 # 1. load raw data
 ```{r , warning = FALSE, message = FALSE }
 results_raw <- import("../data/raw/publication_data/specimen_data.xlsx",  sheet = 1, stringsAsFactors = TRUE)  # convenience function from package "rio"
+# v1.1.0: the main analysis excludes sample 180 (zuordnung_id 180, collected over two days
+# instead of 24 hours). Render with params = list(exclude_sample = "") for the
+# sensitivity analysis with all 54 samples (see analysis/README.md).
+if (nzchar(params$exclude_sample)) results_raw <- results_raw %>% filter(as.character(zuordnung_id) != params$exclude_sample)
 
 model_summary_raw <- import("../data/raw/publication_data/model_performance.xlsx",  sheet = 2, stringsAsFactors = TRUE)
 
