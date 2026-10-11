@@ -1,6 +1,6 @@
 # Release v1.1.0 – Revision 1 (main analysis excluding sample 180)
 
-**Release date**: set when the release is published
+**Release date**: 2026-10-11
 **Archive**: Zenodo, DOI of all versions [10.5281/zenodo.17661709](https://doi.org/10.5281/zenodo.17661709)
 (resolves to the latest version); previous version 1.0.0: [10.5281/zenodo.17661710](https://doi.org/10.5281/zenodo.17661710)
 **Models and example images** (unchanged): [10.5281/zenodo.17661921](https://doi.org/10.5281/zenodo.17661921)
