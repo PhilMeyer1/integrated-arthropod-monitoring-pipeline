@@ -2,11 +2,11 @@
 
 **Release date**: 2026-10-11
 **Archive**: Zenodo, DOI of all versions [10.5281/zenodo.17661709](https://doi.org/10.5281/zenodo.17661709)
-(resolves to the latest version); previous version 1.0.0: [10.5281/zenodo.17661710](https://doi.org/10.5281/zenodo.17661710)
-**Models and example images** (unchanged): [10.5281/zenodo.17661921](https://doi.org/10.5281/zenodo.17661921)
+(resolves to the latest version)
+**Models and example images**: [10.5281/zenodo.24168020](https://doi.org/10.5281/zenodo.24168020)
 
-This version accompanies the first revision of the manuscript "Integrated arthropod monitoring
-pipeline detects size-dependent responses" (manuscript under revision at Scientific Reports, 2026).
+This version accompanies the manuscript "Integrated arthropod monitoring
+pipeline detects size-dependent responses" (manuscript submitted for publication, 2026).
 
 ## What changed
 
@@ -59,10 +59,7 @@ pipeline detects size-dependent responses" (manuscript under revision at Scienti
 
 - Version 1.1.0 in `.zenodo.json`, `CITATION.cff` and `analysis/DESCRIPTION`; ORCID of the
   corresponding author in `.zenodo.json`.
-- The manuscript is described as "manuscript under revision at Scientific Reports (2026)" instead
-  of "manuscript in review, 2025".
-- The code archive is cited with the DOI of all versions (10.5281/zenodo.17661709); version 1.0.0
-  is named as the earlier version.
+- The code archive is cited with the DOI of all versions (10.5281/zenodo.17661709).
 - Removed: the reference to an older, separate Zenodo software record ("Arthropod Classification
   Pipeline", 2025-11-03), which was listed as the companion article; the article has no DOI yet.
 - README files: placeholder and outdated publication notes replaced; the key findings in
@@ -71,8 +68,9 @@ pipeline detects size-dependent responses" (manuscript under revision at Scienti
 ## What is unchanged
 
 - Pipeline code (`pipeline/`): detection, segmentation and hierarchical classification.
-- Detection and segmentation models and example images (Zenodo 10.5281/zenodo.17661921).
-  The hierarchical classification models remain available upon reasonable request.
+- Detection and segmentation models and example images. All models, including the hierarchical
+  classification models, are openly available on Zenodo
+  (https://doi.org/10.5281/zenodo.24168020; model weights: AGPL-3.0).
 - The graphical user interface (Tkinter) used for imaging is not part of this archive.
 - The analysis code in `Data_Analysis.Rmd` apart from the sample parameter; commented-out lines
   that named sampling sites now use site codes or placeholders.
@@ -81,7 +79,7 @@ pipeline detects size-dependent responses" (manuscript under revision at Scienti
 
 Both analyses were rerun in Docker on 2026-10-11 on the reduced data files (renders without
 network access) and compared value by value with runs of the same analysis on the full data
-files of version 1.0.0. Main analysis (53 samples): of 933 values (key numbers and output
+files. Main analysis (53 samples): of 933 values (key numbers and output
 tables), 927 are equal (exactly or within a relative difference of 1e-9); the other 6 are
 permutation P-values of Tables S8 and S10, which use no fixed seed. Sensitivity analysis (54
 samples): 913 of 921 values equal, the other 8 are such permutation P-values. The rows that

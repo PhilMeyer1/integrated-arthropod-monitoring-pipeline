@@ -56,7 +56,7 @@ This directory contains the data that `analysis/scripts/Data_Analysis.Rmd` reads
 
 ### model_performance.xlsx
 
-**Description:** Classification performance on the test set, per classification model (sheet `TestObjects Model Performance`) and per taxon (sheet `TestObjects Taxon Performance`); unchanged from version 1.0.0
+**Description:** Classification performance on the test set, per classification model (sheet `TestObjects Model Performance`) and per taxon (sheet `TestObjects Taxon Performance`)
 
 **Columns (both sheets, 15 each):** taxon or model ID, scientific name and rank, validation, training and test counts, average confidence, correct and incorrect classifications without and with the confidence threshold, `accuracy_without_threshold`, `threshold_for_accuracy`, `accuracy_with_threshold`, `objects_without_determination`
 
@@ -114,9 +114,9 @@ This directory contains the data that `analysis/scripts/Data_Analysis.Rmd` reads
 
 If you use this data, please cite:
 
-> Meyer, P., Scharnhorst, V., Lechner, M., Haslinger, H., Gierus, M., & Meimberg, H. Integrated arthropod monitoring pipeline detects size-dependent responses. Manuscript under revision at Scientific Reports (2026).
+> Meyer, P., Scharnhorst, V., Lechner, M., Haslinger, H., Gierus, M., & Meimberg, H. Integrated arthropod monitoring pipeline detects size-dependent responses. Manuscript submitted for publication (2026).
 
-**Data Repository:** Zenodo DOI (all versions): 10.5281/zenodo.17661709; version 1.0.0: 10.5281/zenodo.17661710
+**Data Repository:** Zenodo DOI (all versions): 10.5281/zenodo.17661709
 
 ---
 
@@ -146,7 +146,7 @@ For questions about the data:
 ## Related Files
 
 - **Code Repository:** See parent directory for complete classification pipeline
-- **Models:** Trained YOLO models available upon request (large files)
+- **Models:** Trained YOLO models (detection, segmentation and hierarchical classification): https://doi.org/10.5281/zenodo.24168020
 - **Documentation:**
   - `../../README.md` - Pipeline overview and usage
   - `../../THRESHOLD_CALIBRATION.md` - Threshold methodology

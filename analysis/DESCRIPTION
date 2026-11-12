@@ -8,7 +8,7 @@ Authors@R: person("Victor", "Scharnhorst",
 Description: R analysis scripts and statistical models for arthropod biodiversity
     monitoring data. This package contains the analysis code for the manuscript
     "Integrated arthropod monitoring pipeline detects size-dependent responses"
-    (manuscript under revision at Scientific Reports, 2026).
+    (manuscript submitted for publication, 2026).
 License: MIT + file ../LICENSE
 Encoding: UTF-8
 Depends:

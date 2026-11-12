@@ -69,8 +69,8 @@ brew install python@3.8
 ### 1. Clone Repository
 
 ```bash
-git clone https://github.com/PhilMeyer1/arthropod-classification-pipeline.git
-cd arthropod-classification-pipeline
+git clone https://github.com/PhilMeyer1/integrated-arthropod-monitoring-pipeline.git
+cd integrated-arthropod-monitoring-pipeline/pipeline
 ```
 
 ### 2. Create Virtual Environment
@@ -371,7 +371,7 @@ python scripts\02_process_images.py --input "C:\Users\My Name\image.png"
 If you encounter issues not covered here:
 
 1. **Check logs:** `./logs/pipeline.log`
-2. **Search Issues:** https://github.com/PhilMeyer1/arthropod-classification-pipeline/issues
+2. **Search Issues:** https://github.com/PhilMeyer1/integrated-arthropod-monitoring-pipeline/issues
 3. **Ask for Help:** Open a new issue with:
    - Python version (`python --version`)
    - OS (`uname -a` or Windows version)

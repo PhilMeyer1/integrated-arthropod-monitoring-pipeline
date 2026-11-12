@@ -10,16 +10,6 @@ This repository contains the complete pipeline for processing arthropod specimen
 
 ---
 
-## 📋 For Reviewers
-
-**Quick test (5 minutes)**: See [QUICKTEST.md](QUICKTEST.md)
-**Full test guide**: See [REVIEWER_GUIDE.md](REVIEWER_GUIDE.md)
-**Test results**: See [TEST_REPORT.md](TEST_REPORT.md)
-
-**TL;DR**: `pip install -r requirements.txt` → `python scripts/01_setup_database.py --example` → `python scripts/test_core_components.py` → Expect "5/5 tests passed"
-
----
-
 ## Overview
 
 This pipeline processes arthropod specimens through a multi-stage workflow:
@@ -45,8 +35,8 @@ This pipeline processes arthropod specimens through a multi-stage workflow:
 
 ```bash
 # Clone repository
-git clone https://github.com/PhilMeyer1/arthropod-classification-pipeline.git
-cd arthropod-classification-pipeline
+git clone https://github.com/PhilMeyer1/integrated-arthropod-monitoring-pipeline.git
+cd integrated-arthropod-monitoring-pipeline/pipeline
 
 # Create virtual environment (recommended)
 python -m venv venv
@@ -130,19 +120,20 @@ The pipeline uses specialized YOLO models for arthropod detection and segmentati
 
 ### Classification Models
 
-The hierarchical classification models (YOLOv11) are **not included** in this public release but are available upon reasonable request for academic research purposes. Contact: philipp.meyer@boku.ac.at
+The hierarchical classification models used in the study are openly available on Zenodo together with the detection and segmentation models (model weights: AGPL-3.0).
 
 ### Download Models and Data
 
 Models and example images are available on Zenodo:
-- **DOI**: [10.5281/zenodo.17661921](https://doi.org/10.5281/zenodo.17661921)
-- **Size**: ~106 MB (compressed)
-- **Contents**: All detection/segmentation models + example images
+- **DOI**: [10.5281/zenodo.24168020](https://doi.org/10.5281/zenodo.24168020) (version 2.0.0)
+- **Contents**: detection and segmentation models and example images (~106 MB), hierarchical classification models (~1.4 GB)
 
 ```bash
 # Download and extract to pipeline directory
-wget https://zenodo.org/records/17661921/files/detection-classification-models-example-images-v1.0.0.zip
+wget https://zenodo.org/records/24168020/files/detection-classification-models-example-images-v1.0.0.zip
 unzip detection-classification-models-example-images-v1.0.0.zip -d data/
+# Classification models (see README_MODELS.md in the Zenodo record for the folder layout)
+wget https://zenodo.org/records/24168020/files/classification-models-v2.0.0.zip
 ```
 
 ## Pipeline Architecture
@@ -171,7 +162,7 @@ unzip detection-classification-models-example-images-v1.0.0.zip -d data/
 ## Repository Structure
 
 ```
-arthropod-classification-pipeline/
+pipeline/
 ├── scripts/                    # CLI scripts for pipeline execution
 │   ├── 01_setup_database.py   # Initialize SQLite database
 │   ├── 02_process_images.py   # Detection & extraction
@@ -284,7 +275,6 @@ See [TEST_REPORT.md](TEST_REPORT.md) for full test results.
 ### Full Dataset (Upon Request)
 - 12,666 manually classified specimens
 - Complete SQLite database (~100 MB)
-- Trained models for all taxonomic levels
 
 Contact corresponding author for full dataset access.
 
@@ -293,12 +283,11 @@ Contact corresponding author for full dataset access.
 If you use this pipeline, please cite:
 
 ```bibtex
-@article{Meyer2026,
+@unpublished{Meyer2026,
   title={Integrated arthropod monitoring pipeline detects size-dependent responses},
   author={Meyer, Philipp and Scharnhorst, Victor and Lechner, Michael and
           Haslinger, Hanna and Gierus, Martin and Meimberg, Harald},
-  journal={Scientific Reports},
-  note={Manuscript under revision},
+  note={Manuscript submitted for publication},
   year={2026}
 }
 ```
@@ -315,9 +304,9 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 ## Support
 
-- **Issues**: [GitHub Issues](https://github.com/PhilMeyer1/arthropod-classification-pipeline/issues)
+- **Issues**: [GitHub Issues](https://github.com/PhilMeyer1/integrated-arthropod-monitoring-pipeline/issues)
 - **Documentation**: See `docs/` folder
-- **Publication**: Manuscript under revision at Scientific Reports (2026)
+- **Publication**: Manuscript submitted for publication (2026)
 
 ## Contributing
 

@@ -8,7 +8,7 @@ This release is associated with the manuscript:
 
 > **Meyer, P., Scharnhorst, V., Lechner, M., Haslinger, H., Gierus, M., & Meimberg, H.** (2025).
 > *Integrated arthropod monitoring pipeline detects size-dependent responses.*
-> Manuscript in review.
+> Manuscript submitted for publication.
 
 ---
 
@@ -64,10 +64,9 @@ This is the first public release of the Integrated Arthropod Monitoring Pipeline
   - `detect_others.pt` - Detection model for 1-10mm specimens (6.1 MB)
   - `segment_k1.pt` - Segmentation model for <1mm specimens (23 MB)
   - `segment_others.pt` - Segmentation model for 1-10mm specimens (23 MB)
-  - **Zenodo DOI**: 10.5281/zenodo.17661921
+  - **Zenodo DOI**: [10.5281/zenodo.24168020](https://doi.org/10.5281/zenodo.24168020)
 
-- **Classification Models**: Available upon reasonable request for academic research
-  - Contact: philipp.meyer@boku.ac.at
+- **Classification Models**: Openly available on Zenodo (https://doi.org/10.5281/zenodo.24168020; model weights: AGPL-3.0)
 
 ### Documentation
 - Complete README with installation and usage instructions
@@ -106,7 +105,7 @@ cd pipeline
 pip install -r requirements.txt
 
 # Download models from Zenodo
-# Visit: https://doi.org/10.5281/zenodo.17661921
+# Visit: https://doi.org/10.5281/zenodo.24168020
 # Extract to: pipeline/data/models/
 
 # Test installation
@@ -170,34 +169,33 @@ This is the initial public release. All development was conducted privately at B
           Haslinger, Hanna and Gierus, Martin and Meimberg, Harald},
   title={Integrated Arthropod Monitoring Pipeline - Source Code},
   year={2025},
-  version={1.0.0},
   publisher={Zenodo},
-  doi={10.5281/zenodo.17661710},
+  doi={10.5281/zenodo.17661709},
   url={https://github.com/PhilMeyer1/integrated-arthropod-monitoring-pipeline}
 }
 ```
 
 ### Models
 ```bibtex
-@dataset{Meyer2025models,
+@dataset{Meyer2026models,
   author={Meyer, Philipp and Scharnhorst, Victor and Lechner, Michael and
           Haslinger, Hanna and Gierus, Martin and Meimberg, Harald},
-  title={Detection and Segmentation Models for Arthropod Monitoring Pipeline},
-  year={2025},
-  version={1.0.0},
+  title={Detection, Segmentation and Hierarchical Classification Models and Example Composite Images for the Arthropod Monitoring Pipeline},
+  year={2026},
+  version={2.0.0},
   publisher={Zenodo},
-  doi={10.5281/zenodo.17661921}
+  doi={10.5281/zenodo.24168020}
 }
 ```
 
 ### Publication
 ```bibtex
-@article{Meyer2025,
+@unpublished{Meyer2026,
   title={Integrated arthropod monitoring pipeline detects size-dependent responses},
   author={Meyer, Philipp and Scharnhorst, Victor and Lechner, Michael and
           Haslinger, Hanna and Gierus, Martin and Meimberg, Harald},
-  year={2025},
-  note={Manuscript in review}
+  year={2026},
+  note={Manuscript submitted for publication}
 }
 ```
 
@@ -207,13 +205,13 @@ This is the initial public release. All development was conducted privately at B
 
 This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
 
-**Note**: Detection and segmentation models are provided under MIT License for academic research. Classification models are available upon request. Commercial use of any models requires separate licensing.
+**Note**: The model weights (detection, segmentation and hierarchical classification) are openly available on Zenodo (https://doi.org/10.5281/zenodo.24168020) under the GNU Affero General Public License v3.0 (AGPL-3.0).
 
 ---
 
 ## Known Limitations
 
-1. **Classification Models**: Not included in public release (available upon request)
+1. **Classification Models**: Not included in this repository; openly available on Zenodo (https://doi.org/10.5281/zenodo.24168020)
 2. **Large Files**: Example composite images and models hosted separately on Zenodo
 3. **GPU Recommended**: While CPU processing is supported, GPU significantly improves performance
 4. **Windows Line Endings**: Some files may have CRLF line endings due to development on Windows

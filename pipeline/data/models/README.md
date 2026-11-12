@@ -102,7 +102,7 @@ results = model.predict('composite_image.jpg', conf=0.05, iou=0.1)
 - 50 epochs, 512×512 image size
 - HSV augmentation enabled
 
-**Note**: The classification models in this repository (1.pt, 2.pt) are example models demonstrating the pipeline structure. The actual models used in the study were trained on the complete dataset and can be obtained from the lead contact upon reasonable request for academic research purposes.
+**Note**: The classification models in this repository (1.pt, 2.pt) are example models demonstrating the pipeline structure. The models used in the study were trained on the complete dataset and are openly available at https://doi.org/10.5281/zenodo.24168020.
 
 ## Model Performance
 
@@ -131,20 +131,19 @@ python scripts/03_train_models.py \
 
 ## License
 
-These models are provided under the MIT License for academic and research purposes. Commercial use requires separate licensing.
+The model weights are licensed under the GNU Affero General Public License v3.0 (AGPL-3.0); see the Zenodo record (https://doi.org/10.5281/zenodo.24168020). The code in this repository is licensed under the MIT License.
 
 ## Citation
 
 If you use these models in your research, please cite:
 
 ```bibtex
-@article{Meyer2025,
+@unpublished{Meyer2026,
   title={Integrated arthropod monitoring pipeline detects size-dependent responses},
   author={Meyer, Philipp and Scharnhorst, Victor and Lechner, Michael and
           Haslinger, Hanna and Gierus, Martin and Meimberg, Harald},
-  year={2025},
-  journal={Scientific Reports},
-  note={Manuscript under revision (2026)}
+  year={2026},
+  note={Manuscript submitted for publication}
 }
 ```
 

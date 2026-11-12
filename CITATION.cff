@@ -10,11 +10,8 @@ identifiers:
     value: 10.5281/zenodo.17661709
     description: "Concept DOI of all versions (resolves to the latest version)"
   - type: doi
-    value: 10.5281/zenodo.17661710
-    description: "Version 1.0.0 (2025-11-20)"
-  - type: doi
-    value: 10.5281/zenodo.17661921
-    description: "Detection and segmentation models and example composite images"
+    value: 10.5281/zenodo.24168020
+    description: "Detection, segmentation and hierarchical classification models and example composite images (version 2.0.0)"
 url: "https://github.com/PhilMeyer1/integrated-arthropod-monitoring-pipeline"
 repository-code: "https://github.com/PhilMeyer1/integrated-arthropod-monitoring-pipeline"
 license: MIT
@@ -54,7 +51,7 @@ keywords:
   - ecological monitoring
 abstract: |
   Companion repository for the manuscript "Integrated arthropod monitoring pipeline
-  detects size-dependent responses" (manuscript under revision at Scientific Reports (2026)). Contains the complete
+  detects size-dependent responses" (manuscript submitted for publication, 2026). Contains the complete
   AI-based classification pipeline and statistical analysis code for processing
   arthropod specimens from high-resolution images to taxonomic classifications,
   revealing size-dependent ecological responses to habitat enhancements.
@@ -76,6 +73,5 @@ references:
       - family-names: "Meimberg"
         given-names: "Harald"
     title: "Integrated arthropod monitoring pipeline detects size-dependent responses"
-    journal: "Scientific Reports"
     status: submitted
-    notes: "Manuscript under revision at Scientific Reports (2026)."
+    notes: "Manuscript submitted for publication (2026)."

@@ -203,5 +203,5 @@ analysis, Table S12, sets one), so a fresh run may differ from Table S15 in thos
 
 ## Related Repository
 
-This repository contains the statistical analysis. The machine learning pipeline is in a separate repository:
-- `../arthropod-classification-pipeline/` - AI-based arthropod classification pipeline
+This directory contains the statistical analysis. The machine learning pipeline is in the same repository:
+- `../pipeline/` - AI-based arthropod classification pipeline

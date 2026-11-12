@@ -6,7 +6,7 @@
 [![Python 3.8+](https://img.shields.io/badge/python-3.8+-blue.svg)](https://www.python.org/downloads/)
 [![R 4.2+](https://img.shields.io/badge/R-4.2+-blue.svg)](https://www.r-project.org/)
 [![Code DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.17661709.svg)](https://doi.org/10.5281/zenodo.17661709)
-[![Models DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.17661921.svg)](https://doi.org/10.5281/zenodo.17661921)
+[![Models DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.24168020.svg)](https://doi.org/10.5281/zenodo.24168020)
 
 ---
 
@@ -14,7 +14,7 @@
 
 This repository provides a complete, reproducible pipeline for automated arthropod detection, segmentation, and hierarchical classification from composite images. The system integrates size-based sorting with deep learning (YOLOv8/YOLOv11) to enable comprehensive biodiversity monitoring while preserving specimens for downstream analyses. Our integrated approach reveals size-dependent ecological responses that conventional monitoring methods miss.
 
-**Reference:** Meyer, P., Scharnhorst, V., Lechner, M., Haslinger, H., Gierus, M., & Meimberg, H. *Integrated arthropod monitoring pipeline detects size-dependent responses.* Manuscript under revision at *Scientific Reports* (2026).
+**Reference:** Meyer, P., Scharnhorst, V., Lechner, M., Haslinger, H., Gierus, M., & Meimberg, H. *Integrated arthropod monitoring pipeline detects size-dependent responses.* Manuscript submitted for publication (2026).
 
 **Version 1.1.0 (Revision 1):** the main analysis excludes sample 180 (collected over two days instead of 24 hours); a sensitivity analysis repeats it with all 54 samples. What changed is listed in [RELEASE_NOTES_v1.1.0.md](RELEASE_NOTES_v1.1.0.md); how to run both analyses in [analysis/README.md](analysis/README.md).
 
@@ -128,18 +128,15 @@ Reduced to what the analysis reads: sites carry neutral codes, sampling dates ar
 ## Data Availability
 
 ### Trained Models and Example Data
-Detection and segmentation models (YOLOv8) and example composite images are available on Zenodo:
-- **DOI**: [10.5281/zenodo.17661921](https://doi.org/10.5281/zenodo.17661921)
-- **Contents**: Detection models (<1mm and others), segmentation models (<1mm and others), example composite images
-- **Size**: ~106 MB (compressed)
-
-### Classification Models
-The hierarchical classification models are not included in this public release but are available upon reasonable request for academic research purposes. Contact: philipp.meyer@boku.ac.at
+The detection, segmentation and hierarchical classification models and example composite images are openly available on Zenodo:
+- **DOI**: [10.5281/zenodo.24168020](https://doi.org/10.5281/zenodo.24168020) (version 2.0.0)
+- **Contents**: detection and segmentation models (<1mm and others), hierarchical classification models, example composite images
+- **Size**: ~1.4 GB (classification models), ~106 MB (detection and segmentation models, example images)
+- **Licence**: model weights AGPL-3.0; example images and description CC BY 4.0
 
 ### Complete Source Code
 All source code is archived on Zenodo:
 - **DOI (all versions, resolves to the latest)**: [10.5281/zenodo.17661709](https://doi.org/10.5281/zenodo.17661709)
-- **Earlier version 1.0.0**: [10.5281/zenodo.17661710](https://doi.org/10.5281/zenodo.17661710)
 - **GitHub**: [github.com/PhilMeyer1/integrated-arthropod-monitoring-pipeline](https://github.com/PhilMeyer1/integrated-arthropod-monitoring-pipeline)
 
 ---
@@ -148,12 +145,11 @@ All source code is archived on Zenodo:
 
 ### Paper
 ```bibtex
-@article{Meyer2026,
+@unpublished{Meyer2026,
   title={Integrated arthropod monitoring pipeline detects size-dependent responses},
   author={Meyer, Philipp and Scharnhorst, Victor and Lechner, Michael and
           Haslinger, Hanna and Gierus, Martin and Meimberg, Harald},
-  journal={Scientific Reports},
-  note={Manuscript under revision},
+  note={Manuscript submitted for publication},
   year={2026}
 }
 ```
@@ -174,13 +170,14 @@ All source code is archived on Zenodo:
 
 ### Models & Example Data
 ```bibtex
-@dataset{Meyer2025models,
+@dataset{Meyer2026models,
   author={Meyer, Philipp and Scharnhorst, Victor and Lechner, Michael and
           Haslinger, Hanna and Gierus, Martin and Meimberg, Harald},
-  title={Detection and Segmentation Models for Arthropod Monitoring Pipeline},
-  year={2025},
+  title={Detection, Segmentation and Hierarchical Classification Models and Example Composite Images for the Arthropod Monitoring Pipeline},
+  year={2026},
+  version={2.0.0},
   publisher={Zenodo},
-  doi={10.5281/zenodo.17661921}
+  doi={10.5281/zenodo.24168020}
 }
 ```
 
