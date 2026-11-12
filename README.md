@@ -16,13 +16,13 @@ This repository provides a complete, reproducible pipeline for automated arthrop
 
 **Reference:** Meyer, P., Scharnhorst, V., Lechner, M., Haslinger, H., Gierus, M., & Meimberg, H. *Integrated arthropod monitoring pipeline detects size-dependent responses.* Manuscript submitted for publication (2026).
 
-**Version 1.1.0 (Revision 1):** the main analysis excludes sample 180 (collected over two days instead of 24 hours); a sensitivity analysis repeats it with all 54 samples. What changed is listed in [RELEASE_NOTES_v1.1.0.md](RELEASE_NOTES_v1.1.0.md); how to run both analyses in [analysis/README.md](analysis/README.md).
+**Version 1.1.0:** the main analysis excludes one sample that was collected over two days instead of 24 hours; a sensitivity analysis repeats it with all 54 samples. What changed is listed in [RELEASE_NOTES_v1.1.0.md](RELEASE_NOTES_v1.1.0.md); how to run both analyses in [analysis/README.md](analysis/README.md).
 
 ---
 
 ## Key Findings
 
-Our integrated approach reveals (figures as in the submitted version, 54 samples including sample 180; the main analysis of version 1.1.0 without sample 180 and the comparison of both are in Table S15, [`analysis/reproduction/tables/table_s15_sensitivity_sample180.yaml`](analysis/reproduction/tables/table_s15_sensitivity_sample180.yaml)):
+Our integrated approach reveals (figures as in the submitted version, all 54 samples including the two-day sample; the main analysis of version 1.1.0 without that sample and the comparison of both are in Table S15, [`analysis/reproduction/tables/table_s15_sensitivity_sample180.yaml`](analysis/reproduction/tables/table_s15_sensitivity_sample180.yaml)):
 
 - **Small taxa (<2 mm) show strongest environmental response** (+8% abundance per mm decrease)
 - **Hedgerows increase arthropod abundance by 60%** (size-dependent effect)
@@ -61,7 +61,7 @@ python scripts/test_core_components.py  # Expect: 5/5 tests passed
 
 # Test statistical analysis
 cd ../analysis
-# Open scripts/Data_Analysis.Rmd in RStudio and knit (main analysis without sample 180);
+# Open scripts/Data_Analysis.Rmd in RStudio and knit (main analysis without the two-day sample);
 # reproducible Docker run of the main and the sensitivity analysis: see analysis/README.md
 ```
 

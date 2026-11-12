@@ -18,7 +18,7 @@ This directory contains the data that `analysis/scripts/Data_Analysis.Rmd` reads
 ## Coding
 
 - **Sites** (`location`): neutral codes `site_01`, `site_01 b`, `site_02` to `site_10` (eleven sampling locations). The codes are chosen so that sorting `site_date` (site code, `#`, date) in the analysis gives the same row order as before the recoding; the seeded permutation test of the indicator species analysis (Table S12) depends on that order.
-- **Samples** (`zuordnung_id`): the sample numbers used in the manuscript, unchanged (sample 180 is `180`). The number links `specimen_data.xlsx` and `biomass_data.xlsx`.
+- **Samples** (`zuordnung_id`): the sample numbers used in the manuscript, unchanged. The number links `specimen_data.xlsx` and `biomass_data.xlsx`.
 - **Dates**: `year` and `day_of_year` (1 = 1 January). The analysis rebuilds the sampling date as `make_date(year) + day_of_year - 1` (applied by `analysis/reproduction/reproduction.patch`).
 
 ---

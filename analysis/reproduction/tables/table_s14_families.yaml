@@ -1,4 +1,4 @@
-title: "Orders and families recorded in the 53 sampling units (excluding sample 180), with the number of specimens assigned to each by the pipeline. Specimens without a family-level assignment are listed as \"no family assigned\" and were analysed at order level; specimens without an order-level assignment were excluded from the analyses and are not listed."
+title: "Orders and families recorded in the 53 sampling units (excluding the sample collected over two days), with the number of specimens assigned to each by the pipeline. Specimens without a family-level assignment are listed as \"no family assigned\" and were analysed at order level; specimens without an order-level assignment were excluded from the analyses and are not listed."
 columns:
   - name: "Order"
     width: 2.4

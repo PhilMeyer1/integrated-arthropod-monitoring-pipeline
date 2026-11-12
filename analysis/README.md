@@ -132,12 +132,12 @@ The main analysis is performed in `scripts/Data_Analysis.Rmd`.
 ## Usage
 
 1. Open `data-analysis.Rproj` in RStudio
-2. Run `scripts/Data_Analysis.Rmd` to perform the analysis (main analysis without sample 180; sensitivity analysis: see below)
+2. Run `scripts/Data_Analysis.Rmd` to perform the analysis (main analysis without the two-day sample; sensitivity analysis: see below)
 3. Results will be generated in the `output/` directory
 
 ## Main analysis and sensitivity analysis (version 1.1.0)
 
-Sample 180 was collected over two days instead of 24 hours. Since version 1.1.0
+One sample was collected over two days instead of 24 hours. Since version 1.1.0
 the main analysis excludes it (53 samples); a sensitivity analysis repeats the analysis with all
 54 samples, as in the submitted version. Both come from the same `scripts/Data_Analysis.Rmd`,
 controlled by one parameter in its YAML header:
@@ -153,9 +153,9 @@ an empty value the imported data stay unchanged.
 ```r
 # main analysis (53 samples, default)
 rmarkdown::render("scripts/Data_Analysis.Rmd")
-# sensitivity analysis (54 samples, sample 180 included)
+# sensitivity analysis (54 samples, two-day sample included)
 rmarkdown::render("scripts/Data_Analysis.Rmd", params = list(exclude_sample = ""),
-                  output_file = "Data_Analysis_sensitivity_with_180.html")
+                  output_file = "Data_Analysis_sensitivity.html")
 ```
 
 Both renders write their tables and figures into the same folders (`scripts/`, `output/`); run them

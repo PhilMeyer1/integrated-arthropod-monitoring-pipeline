@@ -55,8 +55,8 @@ abstract: |
   AI-based classification pipeline and statistical analysis code for processing
   arthropod specimens from high-resolution images to taxonomic classifications,
   revealing size-dependent ecological responses to habitat enhancements.
-  Version 1.1.0 (Revision 1) reports the main analysis without sample 180
-  and adds a sensitivity analysis with it.
+  Version 1.1.0 reports the main analysis without one sample that was collected
+  over two days and adds a sensitivity analysis with it.
 references:
   - type: article
     authors:

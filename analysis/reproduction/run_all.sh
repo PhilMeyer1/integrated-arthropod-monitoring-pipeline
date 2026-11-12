@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Reproduce the v1.1.0 analysis in Docker (R 4.5.0, package versions of analysis/renv.lock):
-#   main_without_180/      main analysis, 53 samples (sample 180 excluded, Rmd default)
+#   main_without_180/      main analysis, 53 samples (two-day sample excluded, Rmd default)
 #   sensitivity_with_180/  sensitivity analysis, all 54 samples
 # Each run folder receives the rendered scripts/ (HTML report, Word tables, figures),
 # output/tables/*.csv, session.RData, sessionInfo.txt and key_numbers.csv (key_numbers.R).

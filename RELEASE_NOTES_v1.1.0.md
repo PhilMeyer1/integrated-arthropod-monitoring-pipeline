@@ -1,4 +1,4 @@
-# Release v1.1.0 – Revision 1 (main analysis excluding sample 180)
+# Release v1.1.0 – main analysis with 53 samples, sensitivity analysis with all 54
 
 **Release date**: 2026-10-11
 **Archive**: Zenodo, DOI of all versions [10.5281/zenodo.17661709](https://doi.org/10.5281/zenodo.17661709)
@@ -10,9 +10,9 @@ pipeline detects size-dependent responses" (manuscript submitted for publication
 
 ## What changed
 
-### Analysis: main analysis without sample 180, sensitivity analysis with it
+### Analysis: main analysis without the two-day sample, sensitivity analysis with it
 
-- Sample 180 was collected over two days instead of 24 hours. The main analysis
+- One sample was collected over two days instead of 24 hours. The main analysis
   now excludes it (53 samples); a sensitivity analysis repeats the analysis with all 54 samples,
   as in the submitted version.
 - Both run from the same `analysis/scripts/Data_Analysis.Rmd`, controlled by one parameter in its
@@ -45,7 +45,7 @@ pipeline detects size-dependent responses" (manuscript submitted for publication
   reproduce the results of the manuscript. Sites carry neutral codes (`site_01`, `site_01 b`,
   `site_02` to `site_10`), sampling dates are given as year and day of the year, and
   coordinates, object IDs and taxonomic ranks the analysis does not use are not included.
-  Sample numbers (`zuordnung_id`) are those of the manuscript (sample 180 is `180`).
+  Sample numbers (`zuordnung_id`) are those of the manuscript.
 - `specimen_data.xlsx`: sheet `Object List`, the 40,090 specimens with an order in the 54 valid
   samples (10 columns). `biomass_data.xlsx`: 371 weighed size fractions (`zuordnung_id`,
   `size`, `biomass_size`). `model_performance.xlsx`: the two test-set sheets the analysis reads,

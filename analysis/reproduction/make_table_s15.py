@@ -1,5 +1,5 @@
-"""Table S15: key results of the main analysis (53 samples, sample 180 excluded) next to the
-sensitivity analysis (54 samples, sample 180 included).
+"""Table S15: key results of the main analysis (53 samples, two-day sample excluded) next to the
+sensitivity analysis (54 samples, two-day sample included).
 
 Reads key_numbers.csv of both runs written by run_all.sh (key_numbers.R); every cell is
 computed from the unrounded run values, no number is typed in. Percentages are
@@ -24,7 +24,7 @@ OUT = HERE / "tables" / "table_s15_sensitivity_sample180.yaml"
 # key_numbers.csv of earlier runs used German key names (textzahlen.csv)
 ALIASES = {"proben_n": "samples_n", "ind_mittlere_groesse_mm": "ind_mean_size_mm"}
 
-HEAD = '''title: "Sensitivity analysis: main results without and with sample 180."
+HEAD = '''title: "Sensitivity analysis: main results without and with the sample collected over two days."
 columns:
   - name: "Quantity"
     width: 5.5
@@ -32,15 +32,15 @@ columns:
   - name: "Table"
     width: 1.2
     align: center
-  - name: "Main analysis (53 samples, without sample 180)"
+  - name: "Main analysis (53 samples, without the two-day sample)"
     width: 3.0
     align: center
-  - name: "Sensitivity analysis (54 samples, with sample 180)"
+  - name: "Sensitivity analysis (54 samples, with the two-day sample)"
     width: 3.0
     align: center
 data:
 '''
-TAIL = ('note: "Sample 180 was collected over two days instead of 24 hours; the '
+TAIL = ('note: "One sample was collected over two days instead of 24 hours; the '
         'main analysis (Tables S4-S12, main text) excludes it, and this table repeats the key '
         'results with it. Percentages are 100 x (exp(b) - 1) '
         'of the model coefficients. P-values of permutation tests (S8, S10, S12) vary slightly '

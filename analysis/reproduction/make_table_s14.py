@@ -1,9 +1,9 @@
-"""Table S14: orders and families of the 53 samples of the main analysis (sample 180 excluded).
+"""Table S14: orders and families of the 53 samples of the main analysis (two-day sample excluded).
 
 Counts the field specimens of specimen_data.xlsx (sheet 'Object List') per order and family
 with the same filters as Data_Analysis.Rmd: valid samples only (is_valid == "True"), specimens
-without an order dropped, specimens without a family counted at order level, sample 180
-(zuordnung_id 180) excluded as in the main analysis. A pure count, no statistics; standard
+without an order dropped, specimens without a family counted at order level, the two-day
+sample (EXCLUDED_SAMPLE) excluded as in the main analysis. A pure count, no statistics; standard
 library only.
 
 The total must equal the specimen count of the main analysis (37,612 specimens in 53 samples,
@@ -50,7 +50,7 @@ def build(counts: collections.Counter, total: int) -> str:
     for (order, _), n in counts.items():
         orders[order] += n
     lines = [
-        'title: "Orders and families recorded in the 53 sampling units (excluding sample 180), with '
+        'title: "Orders and families recorded in the 53 sampling units (excluding the sample collected over two days), with '
         'the number of specimens assigned to each by the pipeline. Specimens without a family-level '
         'assignment are listed as \\"no family assigned\\" and were analysed at order level; '
         'specimens without an order-level assignment were excluded from the analyses and are not '
